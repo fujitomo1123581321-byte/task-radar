@@ -688,66 +688,54 @@ async def cmd_sync(ctx):
         await ctx.send(f"⚠️ 同期中にエラーが発生しました: {e}")
 
 # -------------------------------------------------------------
-# Main Cloud Runner (Instant Port Binding + Gateway Worker)
+# Background Health Server for Render (Standard Threaded Pattern)
 # -------------------------------------------------------------
-async def run_cloud_app():
-    # 1. Bind port immediately (within 0.05s) so Render detects open port instantly!
-    port = int(os.environ.get("PORT", 10000))
-    app = web.Application()
+import http.server
+import threading
 
-    async def health_handler(request):
+class HealthHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
         assignments = load_assignments()
-        d_token = CONFIG.get("discord_bot_token") or os.environ.get("DISCORD_BOT_TOKEN")
-        g_key = CONFIG.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
-        return web.json_response({
+        data = {
             "status": "online",
             "app": "Task Radar Discord AI Bot",
-            "bot_user": bot.user.name if bot.user else "Not logged in",
-            "bot_is_ready": bot.is_ready(),
-            "has_discord_token": bool(d_token),
-            "has_gemini_key": bool(g_key),
+            "bot_user": bot.user.name if bot.user else "Starting...",
             "tasks_count": len(assignments),
             "timestamp": datetime.now(JST).isoformat()
-        })
+        }
+        resp = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(resp)))
+        self.end_headers()
+        self.wfile.write(resp)
 
-    app.router.add_get("/", health_handler)
-    app.router.add_get("/health", health_handler)
+    def log_message(self, format, *args):
+        # Suppress noisy health ping access logs
+        pass
 
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-    print(f"🌐 [Web Server] Successfully bound to 0.0.0.0:{port}! Health checks active.")
+def start_health_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = http.server.HTTPServer(("0.0.0.0", port), HealthHandler)
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    print(f"🌐 [Cloud Server] Health check listener active on 0.0.0.0:{port}")
 
+# -------------------------------------------------------------
+# Main Runner
+# -------------------------------------------------------------
+def main():
     token = CONFIG.get("discord_bot_token") or os.environ.get("DISCORD_BOT_TOKEN")
     if not token:
         print("Error: 'discord_bot_token' is missing in config.json or environment variables.")
-        return
+        sys.exit(1)
 
-    # 2. Connect to Discord Gateway with graceful backoff
-    retry_delay = 15
-    while True:
-        try:
-            print("Connecting to Discord Gateway...")
-            await bot.start(token)
-            break
-        except discord.errors.HTTPException as e:
-            if getattr(e, "status", None) == 429:
-                print(f"⚠️ Discord 429 Rate Limit hit. Waiting {retry_delay}s before reconnecting (Web server remains active)...")
-                await asyncio.sleep(retry_delay)
-                retry_delay = min(retry_delay * 2, 60)
-            else:
-                print(f"HTTPException: {e}. Waiting 10s...")
-                await asyncio.sleep(10)
-        except Exception as e:
-            print(f"Connection error: {e}. Waiting 10s...")
-            await asyncio.sleep(10)
+    # 1. Start background web server for Render port check
+    start_health_server()
 
-def main():
-    try:
-        asyncio.run(run_cloud_app())
-    except (KeyboardInterrupt, SystemExit):
-        pass
+    # 2. Run standard Discord Bot (discord.py manages event loop & automatic backoff)
+    print("Starting Discord AI Bot with standard bot.run()...")
+    bot.run(token)
 
 if __name__ == "__main__":
     main()
