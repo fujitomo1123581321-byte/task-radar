@@ -697,10 +697,15 @@ async def run_cloud_app():
 
     async def health_handler(request):
         assignments = load_assignments()
+        d_token = CONFIG.get("discord_bot_token") or os.environ.get("DISCORD_BOT_TOKEN")
+        g_key = CONFIG.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
         return web.json_response({
             "status": "online",
             "app": "Task Radar Discord AI Bot",
-            "bot_user": bot.user.name if bot.user else "Starting...",
+            "bot_user": bot.user.name if bot.user else "Not logged in",
+            "bot_is_ready": bot.is_ready(),
+            "has_discord_token": bool(d_token),
+            "has_gemini_key": bool(g_key),
             "tasks_count": len(assignments),
             "timestamp": datetime.now(JST).isoformat()
         })
