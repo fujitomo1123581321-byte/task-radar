@@ -132,7 +132,9 @@ def test_discord(webhook_url):
 
 def check_and_notify():
     assignments, config = load_data()
-    now = datetime.now()
+    # Always use Japan Standard Time (JST, UTC+9) regardless of host OS timezone
+    jst = timezone(timedelta(hours=9))
+    now = datetime.now(jst).replace(tzinfo=None)
 
     urgent_24h = []
     urgent_3d = []
