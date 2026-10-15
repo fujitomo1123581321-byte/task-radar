@@ -401,31 +401,7 @@ class TaskConfirmView(discord.ui.View):
 intents = discord.Intents.default()
 intents.message_content = True
 
-class TaskRadarBot(commands.Bot):
-    async def setup_hook(self):
-        port = int(os.environ.get("PORT", 8080))
-        app = web.Application()
-
-        async def health_handler(request):
-            assignments = load_assignments()
-            return web.json_response({
-                "status": "online",
-                "app": "Task Radar Discord AI Bot",
-                "bot_user": self.user.name if self.user else "Starting",
-                "tasks_count": len(assignments),
-                "timestamp": datetime.now(JST).isoformat()
-            })
-
-        app.router.add_get("/", health_handler)
-        app.router.add_get("/health", health_handler)
-
-        runner = web.AppRunner(app)
-        await runner.setup()
-        site = web.TCPSite(runner, "0.0.0.0", port)
-        await site.start()
-        print(f"🌐 [Cloud Server] Health check listener active on 0.0.0.0:{port}")
-
-bot = TaskRadarBot(command_prefix="!", intents=intents, help_command=None)
+bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
 @bot.event
 async def on_ready():
@@ -712,29 +688,61 @@ async def cmd_sync(ctx):
         await ctx.send(f"⚠️ 同期中にエラーが発生しました: {e}")
 
 # -------------------------------------------------------------
-# Main Runner (12-Factor Clean Supervisor Pattern)
+# Main Cloud Runner (Instant Port Binding + Gateway Worker)
 # -------------------------------------------------------------
-def main():
+async def run_cloud_app():
+    # 1. Bind port immediately (within 0.05s) so Render detects open port instantly!
+    port = int(os.environ.get("PORT", 10000))
+    app = web.Application()
+
+    async def health_handler(request):
+        assignments = load_assignments()
+        return web.json_response({
+            "status": "online",
+            "app": "Task Radar Discord AI Bot",
+            "bot_user": bot.user.name if bot.user else "Starting...",
+            "tasks_count": len(assignments),
+            "timestamp": datetime.now(JST).isoformat()
+        })
+
+    app.router.add_get("/", health_handler)
+    app.router.add_get("/health", health_handler)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"🌐 [Web Server] Successfully bound to 0.0.0.0:{port}! Health checks active.")
+
     token = CONFIG.get("discord_bot_token") or os.environ.get("DISCORD_BOT_TOKEN")
     if not token:
         print("Error: 'discord_bot_token' is missing in config.json or environment variables.")
-        sys.exit(1)
+        return
 
-    print("Starting Cloud-Ready Discord AI Bot with 24/7 Web Listener...")
+    # 2. Connect to Discord Gateway with graceful backoff
+    retry_delay = 15
+    while True:
+        try:
+            print("Connecting to Discord Gateway...")
+            await bot.start(token)
+            break
+        except discord.errors.HTTPException as e:
+            if getattr(e, "status", None) == 429:
+                print(f"⚠️ Discord 429 Rate Limit hit. Waiting {retry_delay}s before reconnecting (Web server remains active)...")
+                await asyncio.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, 60)
+            else:
+                print(f"HTTPException: {e}. Waiting 10s...")
+                await asyncio.sleep(10)
+        except Exception as e:
+            print(f"Connection error: {e}. Waiting 10s...")
+            await asyncio.sleep(10)
+
+def main():
     try:
-        bot.run(token)
-    except discord.errors.HTTPException as e:
-        if getattr(e, "status", None) == 429:
-            print("⚠️ Discord Rate Limit (429) hit. Sleeping 30s before clean container restart...")
-            time.sleep(30)
-        else:
-            print(f"HTTPException: {e}")
-            time.sleep(5)
-        sys.exit(1)
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        time.sleep(5)
-        sys.exit(1)
+        asyncio.run(run_cloud_app())
+    except (KeyboardInterrupt, SystemExit):
+        pass
 
 if __name__ == "__main__":
     main()
