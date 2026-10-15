@@ -1,0 +1,16 @@
+# Private configuration with tokens and webhook URLs (NEVER COMMIT)
+config.json
+
+# Python cache & temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Local scripts
+*.vbs
+*.bat
+
+# OS files
+Thumbs.db
+.DS_Store

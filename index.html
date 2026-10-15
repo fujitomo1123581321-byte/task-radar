@@ -1,0 +1,1746 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f172a">
+  <title>提出期限・やる事レーダー | Deadline & Task Radar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <!-- assignments.js (file:// プロトコル直接起動用) -->
+  <script src="assignments.js"></script>
+  <!-- QRCode.js for mobile pairing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans JP', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          },
+          animation: {
+            'pulse-fast': 'pulse 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
+    ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.7); }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200" id="bodyRoot">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="sticky top-0 z-30 bg-slate-900/85 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <!-- Title & Live Clock -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-rose-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+              期限・やる事レーダー
+              <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">学業＆自分</span>
+            </h1>
+          </div>
+          <div class="text-xs text-slate-400 font-mono flex items-center gap-2" id="currentClock">
+            2026/10/14 --:--:--
+          </div>
+        </div>
+      </div>
+
+        <a href="https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 text-xs font-medium text-indigo-300 hover:text-white bg-indigo-500/15 hover:bg-indigo-500/25 rounded-lg border border-indigo-500/30 transition flex items-center gap-1.5" title="LETUSの今後のイベントページを別タブで開く">
+          <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+          <span class="hidden lg:inline">LETUS開く</span>
+        </a>
+
+        <button onclick="triggerSubmissionScan()" class="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-lg shadow-md shadow-blue-600/20 transition flex items-center gap-1.5" title="LETUSを自動で開いて緑色（提出済み）を安全にスキャン (READ-ONLY)">
+          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="hidden sm:inline">提出状況スキャン</span>
+        </button>
+
+        <button onclick="openLetusModal()" class="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-lg shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5" title="LETUSの画面貼り付けやカレンダーから一括取り込み">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          <span>LETUS一括取り込み</span>
+        </button>
+
+        <button onclick="openHelpModal()" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition flex items-center gap-1.5" title="使い方ガイド">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span class="hidden sm:inline">AI頼み方</span>
+        </button>
+
+        <button onclick="openMobileModal()" class="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 rounded-lg shadow-md shadow-violet-600/20 transition flex items-center gap-1.5" title="スマホで開く（QRコード）">
+          <svg class="w-4 h-4 text-violet-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+          <span class="hidden sm:inline">📱 スマホで開く</span>
+          <span class="sm:hidden">📱</span>
+        </button>
+
+        <button onclick="copySummaryText()" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition flex items-center gap-1.5" title="未完了リストをコピー（チャットやLINEに貼れる）">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+          </svg>
+          <span class="hidden md:inline">一覧コピー</span>
+        </button>
+
+        <button onclick="openAddModal()" class="px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 rounded-lg shadow-md shadow-indigo-500/25 transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>追加</span>
+        </button>
+
+        <!-- Theme toggle -->
+        <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition" title="テーマ切り替え">
+          <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <svg id="themeIconMoon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+
+    <!-- MASTER CATEGORY SWITCHER (Academic vs Personal) -->
+    <div class="bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700/80 flex items-center justify-between gap-2 shadow-inner">
+      <div class="grid grid-cols-3 w-full sm:w-auto sm:flex sm:items-center gap-1 text-xs sm:text-sm font-bold">
+        <button onclick="setMainCategory('ALL')" id="catBtnAll" class="px-4 py-2 rounded-xl transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md">
+          <span>🌟 全体</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-800/60" id="badgeCountAll">0</span>
+        </button>
+        <button onclick="setMainCategory('academic')" id="catBtnAcademic" class="px-4 py-2 rounded-xl transition flex items-center justify-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/60">
+          <span>📚 学業の課題</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-900/60 text-slate-400" id="badgeCountAcademic">0</span>
+        </button>
+        <button onclick="setMainCategory('personal')" id="catBtnPersonal" class="px-4 py-2 rounded-xl transition flex items-center justify-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/60">
+          <span>👤 自分のやること</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-900/60 text-slate-400" id="badgeCountPersonal">0</span>
+        </button>
+      </div>
+
+      <div class="hidden md:flex items-center text-xs text-slate-400 pr-3">
+        <span>💡 学業と個人のタスクをワンクリックで切り替え</span>
+      </div>
+    </div>
+
+    <!-- KPI STATS CARDS -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <!-- 24h Emergency -->
+      <div class="bg-slate-800/60 rounded-xl p-4 border border-rose-500/30 relative overflow-hidden backdrop-blur group">
+        <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-rose-500/10 rounded-full blur-xl group-hover:bg-rose-500/20 transition"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse-fast"></span>
+            24時間以内
+          </span>
+          <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-3xl font-extrabold text-white" id="statUrgent24h">0</span>
+          <span class="text-xs text-slate-400">件</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">最優先で終わらせる！</p>
+      </div>
+
+      <!-- 3 Days Warning -->
+      <div class="bg-slate-800/60 rounded-xl p-4 border border-amber-500/30 relative overflow-hidden backdrop-blur group">
+        <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            3日以内
+          </span>
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-3xl font-extrabold text-white" id="statUrgent3d">0</span>
+          <span class="text-xs text-slate-400">件</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">今週中に提出・消化</p>
+      </div>
+
+      <!-- Total Pending -->
+      <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/80 relative overflow-hidden backdrop-blur group">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-indigo-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+            未完了 (残りタスク)
+          </span>
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-3xl font-extrabold text-white" id="statTotalPending">0</span>
+          <span class="text-xs text-slate-400">件</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">未着手 & 進行中</p>
+      </div>
+
+      <!-- Completed -->
+      <div class="bg-slate-800/60 rounded-xl p-4 border border-emerald-500/20 relative overflow-hidden backdrop-blur group">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            完了済み
+          </span>
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-3xl font-extrabold text-white" id="statCompleted">0</span>
+          <span class="text-xs text-slate-400">件</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">ナイス消化！🎉</p>
+      </div>
+    </div>
+
+    <!-- FILTER & CONTROLS TOOLBAR -->
+    <div class="bg-slate-800/60 rounded-xl p-3 sm:p-4 border border-slate-700/80 backdrop-blur space-y-3">
+      <!-- Top Row: Tabs & Search -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <!-- Status Tabs -->
+        <div class="flex items-center overflow-x-auto pb-1 md:pb-0 space-x-1 text-xs sm:text-sm font-medium">
+          <button onclick="setTab('active')" id="tabActive" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm transition whitespace-nowrap">
+            未完了のみ (<span id="countTabActive">0</span>)
+          </button>
+          <button onclick="setTab('urgent')" id="tabUrgent" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/60 transition whitespace-nowrap flex items-center gap-1">
+            🔥 締切間近 (<span id="countTabUrgent">0</span>)
+          </button>
+          <button onclick="setTab('all')" id="tabAll" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/60 transition whitespace-nowrap">
+            すべて (<span id="countTabAll">0</span>)
+          </button>
+          <button onclick="setTab('completed')" id="tabCompleted" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/60 transition whitespace-nowrap">
+            ✅ 完了済み (<span id="countTabCompleted">0</span>)
+          </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative w-full md:w-64">
+          <input type="text" id="searchInput" oninput="renderAssignments()" placeholder="タイトル・科目・メモを検索..." class="w-full bg-slate-900/90 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Bottom Row: Subject / Category Filter & Sort -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-700/50 text-xs">
+        <!-- Subject Pills -->
+        <div class="flex items-center gap-1.5 overflow-x-auto py-1 max-w-full" id="subjectFilterContainer">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Sort Select -->
+        <div class="flex items-center gap-2 ml-auto">
+          <span class="text-slate-400">並び順:</span>
+          <select id="sortSelect" onchange="renderAssignments()" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-200 text-xs focus:outline-none focus:border-indigo-500">
+            <option value="deadlineAsc">締切が近い順 (推奨)</option>
+            <option value="priorityDesc">優先度が高い順</option>
+            <option value="subjectAsc">科目・カテゴリ順</option>
+            <option value="createdDesc">追加が新しい順</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ASSIGNMENTS LIST GRID -->
+    <div id="assignmentsGrid" class="space-y-3">
+      <!-- Rendered dynamically by JavaScript -->
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div id="emptyState" class="hidden text-center py-12 px-4 rounded-xl border border-dashed border-slate-700/80 bg-slate-800/30">
+      <div class="w-12 h-12 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 mb-3">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <h3 class="text-base font-semibold text-slate-200">該当するタスクはありません</h3>
+      <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">すべての消化が完了しているか、条件に一致するタスクがありません。</p>
+      <button onclick="openAddModal()" class="mt-4 px-3 py-1.5 text-xs font-medium text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg transition">
+        ＋ 新しいタスクを追加する
+      </button>
+    </div>
+
+    <!-- FOOTER / HELP -->
+    <footer class="pt-6 pb-12 text-center text-xs text-slate-500 border-t border-slate-800 space-y-2">
+      <p>💡 チャットで「住民票取得、金曜までって登録して」「数値計算の課題出したよ」と話しかけるだけでAIが自動登録・更新します。</p>
+      <div class="flex items-center justify-center gap-4 text-slate-400">
+        <button onclick="exportJSON()" class="hover:text-indigo-400 transition underline underline-offset-2">JSONエクスポート</button>
+        <span>•</span>
+        <button onclick="resetToInitialData()" class="hover:text-rose-400 transition underline underline-offset-2">初期データにリセット</button>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ADD / EDIT MODAL -->
+  <div id="assignmentModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      <div class="px-6 py-4 border-b border-slate-700/80 flex items-center justify-between">
+        <h3 id="modalTitle" class="text-base font-bold text-white flex items-center gap-2">
+          <span>📝 タスクを追加</span>
+        </h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <form id="assignmentForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4 text-xs sm:text-sm">
+        <input type="hidden" id="formId">
+
+        <!-- Category Radio Selector -->
+        <div>
+          <label class="block font-medium text-slate-300 mb-1.5">種類 (大分類) <span class="text-rose-400">*</span></label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="flex items-center gap-2 p-2.5 rounded-lg border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-indigo-500 transition">
+              <input type="radio" name="formCategory" value="academic" checked onchange="toggleCategoryForm(this.value)" class="text-indigo-600 focus:ring-indigo-500">
+              <span class="font-bold text-slate-200">📚 学業 (講義・レポート)</span>
+            </label>
+            <label class="flex items-center gap-2 p-2.5 rounded-lg border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-indigo-500 transition">
+              <input type="radio" name="formCategory" value="personal" onchange="toggleCategoryForm(this.value)" class="text-indigo-600 focus:ring-indigo-500">
+              <span class="font-bold text-emerald-400">👤 自分 (個人・手続き・生活)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Subject / Group -->
+        <div>
+          <label class="block font-medium text-slate-300 mb-1" id="subjectFieldLabel">科目名 <span class="text-rose-400">*</span></label>
+          <div class="flex gap-2">
+            <select id="formSubjectSelect" onchange="syncSubjectInput(this.value)" class="w-1/2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+              <!-- Dynamically populated based on category -->
+            </select>
+            <input type="text" id="formSubject" required placeholder="直接入力 (例: 04天体物理学)" class="w-1/2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <!-- Title -->
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">タイトル・やること <span class="text-rose-400">*</span></label>
+          <input type="text" id="formTitle" required placeholder="例: 第3回 演習問題レポート / 定期券の更新" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <!-- Deadline & Location/Method -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">提出期限・期日 <span class="text-rose-400">*</span></label>
+            <input type="datetime-local" id="formDeadline" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1" id="submissionMethodLabel">提出先・場所</label>
+            <input type="text" id="formSubmissionMethod" placeholder="例: LETUS, 窓口, オンライン" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <!-- Priority & Status -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">優先度</label>
+            <select id="formPriority" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+              <option value="high">🔴 高 (絶対に忘れてはダメ)</option>
+              <option value="medium" selected>🟡 中 (通常)</option>
+              <option value="low">🟢 低 (余裕があれば)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">進行状況</label>
+            <select id="formStatus" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+              <option value="not_started">⚪ 未着手</option>
+              <option value="in_progress">🟡 進行中</option>
+              <option value="submitted">🟢 完了</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Memo -->
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">メモ・必要書類・リンク等</label>
+          <textarea id="formMemo" rows="2" placeholder="持ち物や留意点、関連メモを記入" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+
+        <!-- Form Buttons -->
+        <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-700/80">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs sm:text-sm font-medium text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 rounded-lg transition">
+            キャンセル
+          </button>
+          <button type="submit" class="px-5 py-2 text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-md shadow-indigo-600/30 transition">
+            保存する
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- LETUS IMPORT MODAL -->
+  <div id="letusModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-slate-700/80 flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          <span>📥 LETUS（Moodle）からの課題一括取り込み</span>
+        </h3>
+        <button onclick="closeLetusModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="px-6 pt-3 border-b border-slate-700/60 flex space-x-2 text-xs font-semibold">
+        <button onclick="setLetusTab('paste')" id="letusTabPaste" class="px-3 py-2 border-b-2 border-emerald-400 text-emerald-300">
+          📋 画面テキスト貼り付け
+        </button>
+        <button onclick="setLetusTab('ics')" id="letusTabIcs" class="px-3 py-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+          📅 .ics ファイル読み込み
+        </button>
+        <button onclick="setLetusTab('guide')" id="letusTabGuide" class="px-3 py-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+          📲 スマホ自動同期設定ガイド
+        </button>
+      </div>
+
+      <!-- Tab 1: Paste Text -->
+      <div id="letusPanePaste" class="p-6 space-y-4 overflow-y-auto flex-1 text-xs sm:text-sm">
+        <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-700/60 text-slate-300 space-y-1">
+          <p class="font-semibold text-emerald-400">💡 使い方（一番かんたん）：</p>
+          <ol class="list-decimal list-inside space-y-0.5 text-xs text-slate-400">
+            <li><a href="https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming" target="_blank" class="text-indigo-400 underline font-medium">LETUSの「今後のイベント」</a> またはトップページを開く</li>
+            <li>ページ内を全選択（<kbd class="bg-slate-800 px-1 rounded">Ctrl+A</kbd>）してコピー（<kbd class="bg-slate-800 px-1 rounded">Ctrl+C</kbd>）</li>
+            <li>下の枠に貼り付けて（<kbd class="bg-slate-800 px-1 rounded">Ctrl+V</kbd>）、「解析して取り込む」を押す！</li>
+          </ol>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">LETUSのコピーテキストを貼り付け：</label>
+          <textarea id="letusRawText" rows="6" placeholder="ここにLETUS画面のテキストをまるごと貼り付けてください..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-200 font-mono focus:outline-none focus:border-emerald-500"></textarea>
+        </div>
+
+        <div id="letusParsedPreview" class="hidden space-y-2">
+          <p class="font-semibold text-white flex items-center justify-between text-xs">
+            <span>抽出された課題 (<span id="parsedCount" class="text-emerald-400">0</span>件):</span>
+          </p>
+          <div id="parsedListContainer" class="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-slate-900/80 rounded-lg border border-slate-700/80 text-xs"></div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-700">
+          <button type="button" onclick="parseLetusInput()" class="px-4 py-2 text-xs font-semibold text-white bg-slate-700 hover:bg-slate-600 rounded-lg transition">
+            🔍 テキストを解析
+          </button>
+          <button type="button" id="btnCommitLetus" onclick="commitParsedAssignments()" disabled class="px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-md transition">
+            📥 この内容を登録する
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab 2: ICS File -->
+      <div id="letusPaneIcs" class="p-6 space-y-4 overflow-y-auto flex-1 hidden text-xs sm:text-sm">
+        <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-700/60 text-slate-300 text-xs space-y-1">
+          <p class="font-semibold text-indigo-400">📅 LETUSのカレンダー（.ics）を読み込む：</p>
+          <p class="text-slate-400">LETUSのカレンダーページ下部にある「カレンダーをエクスポート」から保存した `.ics` ファイルをここで読み込めます。</p>
+        </div>
+        <div class="border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-xl p-8 text-center bg-slate-900/50 cursor-pointer" onclick="document.getElementById('icsFileInput').click()">
+          <input type="file" id="icsFileInput" accept=".ics" class="hidden" onchange="handleICSFileSelect(event)">
+          <svg class="w-10 h-10 mx-auto text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+          <p class="font-semibold text-slate-200">ここをクリックして .ics ファイルを選択</p>
+          <p class="text-xs text-slate-400 mt-1">またはファイルをここにドラッグ＆ドロップ</p>
+        </div>
+      </div>
+
+      <!-- Tab 3: Google Calendar Auto-Sync Guide -->
+      <div id="letusPaneGuide" class="p-6 space-y-4 overflow-y-auto flex-1 hidden text-xs sm:text-sm text-slate-300">
+        <div class="bg-gradient-to-r from-indigo-900/40 to-emerald-900/40 p-4 rounded-xl border border-indigo-700/50 space-y-2">
+          <h4 class="font-bold text-white text-sm flex items-center gap-2">
+            <span>🔥 最強の出し忘れ防止：LETUSとスマホの自動同期</span>
+          </h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            LETUSのカレンダー購読URLをGoogleカレンダーまたはiPhoneカレンダーに登録しておくと、<strong>先生がLETUSに課題を出した瞬間にスマホのカレンダーに自動反映され、前日や当日に自動でプッシュ通知</strong>が鳴るようになります！
+          </p>
+        </div>
+
+        <div class="space-y-3 text-xs leading-relaxed">
+          <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700/70">
+            <p class="font-bold text-emerald-400 mb-1">【手順1】LETUSでカレンダーURLを発行する</p>
+            <ol class="list-decimal list-inside space-y-1 text-slate-300">
+              <li><a href="https://letus.ed.tus.ac.jp/calendar/view.php" target="_blank" class="text-indigo-400 underline">LETUSのカレンダー画面</a> の最下部にある「カレンダーをエクスポート」をクリック</li>
+              <li>「すべてのイベント」および「最近および次の60日間」を選択</li>
+              <li>「カレンダーURLを取得」をクリックし、表示されたURLをコピー</li>
+            </ol>
+          </div>
+
+          <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700/70">
+            <p class="font-bold text-indigo-400 mb-1">【手順2】Googleカレンダー / iPhoneに追加する</p>
+            <ul class="list-disc list-inside space-y-1 text-slate-300">
+              <li><strong>Googleカレンダーの場合:</strong> 左側メニュー「他のカレンダー」の「＋」→「URLで追加」を選び、コピーしたURLを貼り付ける</li>
+              <li><strong>iPhoneの場合:</strong>「設定」→「カレンダー」→「アカウント」→「照会するカレンダーを追加」でURLを貼り付ける</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HELP / AI GUIDE MODAL -->
+  <div id="helpModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>🤖 AIチャット頼み方ガイド</span>
+        </h3>
+        <button onclick="closeHelpModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="text-xs sm:text-sm text-slate-300 space-y-3 leading-relaxed">
+        <p>「学業の課題」も「自分のやること（手続き・買い物・連絡など）」も、チャットで話しかけるだけでAIが自動登録します！</p>
+        
+        <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-700/80 space-y-2">
+          <p class="font-semibold text-indigo-400">💡 チャットでの登録例：</p>
+          <ul class="list-disc list-inside space-y-1.5 text-slate-300 text-xs">
+            <li><strong class="text-emerald-400">[自分]</strong> <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300">「定期券の更新、18日中までに自分のやることに追加して」</code></li>
+            <li><strong class="text-emerald-400">[自分]</strong> <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300">「市役所の書類郵送、金曜17時まで」</code></li>
+            <li><strong class="text-indigo-400">[学業]</strong> <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300">「天体物理の課題、来週月曜17時まで」</code></li>
+            <li><strong class="text-emerald-400">[完了]</strong> <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300">「定期券の更新終わったよ」</code>（自動で完了へ）</li>
+            <li><strong class="text-amber-400">[確認]</strong> <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300">「今日・明日やらなきゃいけないこと何がある？」</code></li>
+          </ul>
+        </div>
+
+        <div class="bg-indigo-950/40 rounded-xl p-3 border border-indigo-800/40 space-y-1">
+          <p class="font-semibold text-indigo-300">📅 スマホ通知（カレンダー連携）：</p>
+          <p class="text-xs text-slate-300">
+            各カードの「📅」ボタンでダウンロードした `.ics` をスマホのカレンダーに追加すると、前日＆2時間前にプッシュ通知が鳴ります。
+          </p>
+        </div>
+      </div>
+      <div class="pt-2 flex justify-end">
+        <button onclick="closeHelpModal()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE PAIRING & PWA GUIDE MODAL -->
+  <div id="mobileModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>📱 スマホで開く・アプリ化</span>
+        </h3>
+        <button onclick="closeMobileModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs sm:text-sm text-slate-300">
+        <!-- QR Code Area -->
+        <div class="flex flex-col items-center justify-center bg-slate-900/80 p-4 rounded-xl border border-slate-700/80 space-y-3">
+          <div id="qrcodeCanvas" class="bg-white p-3 rounded-xl shadow-md"></div>
+          <div class="text-center">
+            <p class="font-bold text-slate-100 text-sm">スマホのカメラでスキャン！</p>
+            <p class="text-xs text-slate-400 mt-0.5">※同じWi-Fiにスマホが繋がっていれば即座に開きます</p>
+          </div>
+        </div>
+
+        <!-- URL Copy Field -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-slate-400">スマホ用アクセスURL：</label>
+          <div class="flex items-center gap-2">
+            <input type="text" id="mobileUrlInput" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-indigo-300 select-all focus:outline-none" value="読み込み中...">
+            <button onclick="copyMobileUrl()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold whitespace-nowrap transition">
+              コピー
+            </button>
+          </div>
+        </div>
+
+        <!-- How to Add to Home Screen -->
+        <div class="bg-indigo-950/40 rounded-xl p-3 border border-indigo-800/40 space-y-2">
+          <p class="font-bold text-indigo-300 flex items-center gap-1.5">
+            <span>📲 ホーム画面に追加してアプリ化！</span>
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300">
+            <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+              <span class="font-semibold text-emerald-400">🍎 iPhone (Safari):</span>
+              <p class="text-[11px] text-slate-400 mt-1">下の共有ボタン <span class="text-indigo-300 font-bold">「↑」</span> → <span class="text-white font-semibold">「ホーム画面に追加」</span> をタップ</p>
+            </div>
+            <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+              <span class="font-semibold text-emerald-400">🤖 Android (Chrome):</span>
+              <p class="text-[11px] text-slate-400 mt-1">右上のメニュー <span class="text-indigo-300 font-bold">「︙」</span> → <span class="text-white font-semibold">「ホーム画面に追加」</span> をタップ</p>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400">★ ホーム画面のアイコンから起動すると、ブラウザの枠が消えて全画面アプリになります。</p>
+        </div>
+
+        <!-- Outdoor Note -->
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-1">
+          <p class="font-semibold text-slate-300">💡 外出先（4G/5G・PCがオフのとき）の確認方法：</p>
+          <p>「GitHub Pages」等に無料公開すると、PCが消えていてもスマホから24時間いつでもアクセス可能になります。設定したい場合はAIチャットに「外出先用のクラウド公開を設定して」とお声がけください。</p>
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="closeMobileModal()" class="px-4 py-2 text-xs font-semibold text-white bg-slate-700 hover:bg-slate-600 rounded-lg transition">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 transform translate-y-20 opacity-0 transition duration-300 pointer-events-none text-xs sm:text-sm font-medium">
+    <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+    </svg>
+    <span id="toastMsg">通知メッセージ</span>
+  </div>
+
+  <script>
+    // --- STATE MANAGEMENT ---
+    let assignments = [];
+    let mainCategory = 'ALL'; // 'ALL', 'academic', 'personal'
+    let currentTab = 'active'; // 'active', 'urgent', 'all', 'completed'
+    let selectedSubject = 'ALL';
+
+    const ACADEMIC_PRESETS = [
+      '01物性論2A', '02物性論2B', '02統計力学2', '03量子力学3', 
+      '04天体物理学', '05原子核物理', '07数値計算', '08実験', 
+      '09ゼミ', '10国際関係論', '11データサイエンス・ＡＩ応用基礎'
+    ];
+
+    const PERSONAL_PRESETS = [
+      '手続き', '生活・買い物', '勉強・資格', 'サークル・バイト', '健康・通院', '開発・創作', 'その他'
+    ];
+
+    // Subject Color Palette
+    const SUBJECT_COLORS = {
+      '01物性論2A': { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30' },
+      '02物性論2B': { bg: 'bg-sky-500/15', text: 'text-sky-400', border: 'border-sky-500/30' },
+      '02統計力学2': { bg: 'bg-purple-500/15', text: 'text-purple-400', border: 'border-purple-500/30' },
+      '03量子力学3': { bg: 'bg-indigo-500/15', text: 'text-indigo-400', border: 'border-indigo-500/30' },
+      '04天体物理学': { bg: 'bg-pink-500/15', text: 'text-pink-400', border: 'border-pink-500/30' },
+      '05原子核物理': { bg: 'bg-rose-500/15', text: 'text-rose-400', border: 'border-rose-500/30' },
+      '07数値計算': { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30' },
+      '08実験': { bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/30' },
+      '09ゼミ': { bg: 'bg-teal-500/15', text: 'text-teal-400', border: 'border-teal-500/30' },
+      '10国際関係論': { bg: 'bg-yellow-500/15', text: 'text-yellow-400', border: 'border-yellow-500/30' },
+      '11データサイエンス・ＡＩ応用基礎': { bg: 'bg-cyan-500/15', text: 'text-cyan-400', border: 'border-cyan-500/30' },
+      // Personal
+      '手続き': { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30' },
+      '生活・買い物': { bg: 'bg-teal-500/15', text: 'text-teal-400', border: 'border-teal-500/30' },
+      '勉強・資格': { bg: 'bg-violet-500/15', text: 'text-violet-400', border: 'border-violet-500/30' },
+      'サークル・バイト': { bg: 'bg-orange-500/15', text: 'text-orange-400', border: 'border-orange-500/30' },
+      '健康・通院': { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30' },
+      '開発・創作': { bg: 'bg-cyan-500/15', text: 'text-cyan-400', border: 'border-cyan-500/30' },
+      'DEFAULT': { bg: 'bg-slate-700/40', text: 'text-slate-300', border: 'border-slate-600' }
+    };
+
+    function getSubjectColor(subject) {
+      for (const key in SUBJECT_COLORS) {
+        if (subject.includes(key) || key.includes(subject)) {
+          return SUBJECT_COLORS[key];
+        }
+      }
+      return SUBJECT_COLORS.DEFAULT;
+    }
+
+    // --- INITIALIZATION ---
+    function init() {
+      const saved = localStorage.getItem('deadline_radar_assignments');
+      if (saved) {
+        try {
+          assignments = JSON.parse(saved);
+        } catch (e) {
+          assignments = window.INITIAL_ASSIGNMENTS || [];
+        }
+      } else if (window.INITIAL_ASSIGNMENTS) {
+        assignments = [...window.INITIAL_ASSIGNMENTS];
+      }
+
+      // Ensure every assignment has a category
+      assignments.forEach(a => {
+        if (!a.category) {
+          a.category = (a.subject === '手続き' || a.subject === '生活' || a.subject === '個人') ? 'personal' : 'academic';
+        }
+      });
+
+      updateLiveClock();
+      setInterval(updateLiveClock, 1000);
+      updateCategoryBadges();
+      renderSubjectFilter();
+      renderAssignments();
+
+      // Check if server has updated assignments
+      refreshFromServer();
+    }
+
+    // --- SERVER AUTO REFRESH ---
+    async function refreshFromServer() {
+      if (window.location.protocol.startsWith('http')) {
+        try {
+          const res = await fetch('assignments.json?_t=' + Date.now());
+          if (res.ok) {
+            const serverData = await res.json();
+            if (Array.isArray(serverData) && serverData.length > 0) {
+              const localMap = new Map();
+              assignments.forEach(a => localMap.set(a.id || a.title, a));
+              
+              const merged = serverData.map(s => {
+                const loc = localMap.get(s.id || s.title);
+                if (loc && loc.isCompleted) {
+                  return { ...s, isCompleted: true, completedAt: loc.completedAt };
+                }
+                return s;
+              });
+
+              assignments.forEach(a => {
+                if (a.isCustom && !merged.some(m => m.id === a.id)) {
+                  merged.push(a);
+                }
+              });
+
+              assignments = merged;
+              localStorage.setItem('deadline_radar_assignments', JSON.stringify(assignments));
+              updateCategoryBadges();
+              renderSubjectFilter();
+              renderAssignments();
+            }
+          }
+        } catch (e) {
+          console.log('Server refresh skipped:', e);
+        }
+      }
+    }
+
+    // --- MOBILE PAIRING & MODAL ---
+    let mobileQrInstance = null;
+
+    async function openMobileModal() {
+      const modal = document.getElementById('mobileModal');
+      const input = document.getElementById('mobileUrlInput');
+      const canvasContainer = document.getElementById('qrcodeCanvas');
+      modal.classList.remove('hidden');
+
+      let targetUrl = window.location.href;
+
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        try {
+          const res = await fetch('/api/info');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.mobile_url) {
+              targetUrl = data.mobile_url;
+            }
+          }
+        } catch (e) {
+          targetUrl = 'http://' + window.location.host + '/index.html';
+        }
+      }
+
+      input.value = targetUrl;
+      canvasContainer.innerHTML = '';
+      if (typeof QRCode !== 'undefined') {
+        mobileQrInstance = new QRCode(canvasContainer, {
+          text: targetUrl,
+          width: 170,
+          height: 170,
+          colorDark: "#0f172a",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } else {
+        canvasContainer.innerHTML = '<p class="text-xs text-red-500 p-2">QRライブラリの読み込みに失敗しました。<br>URLを直接開いてください。</p>';
+      }
+    }
+
+    function closeMobileModal() {
+      document.getElementById('mobileModal').classList.add('hidden');
+    }
+
+    function copyMobileUrl() {
+      const input = document.getElementById('mobileUrlInput');
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        showToast('📱 スマホ用URLをコピーしました！');
+      }).catch(() => {
+        showToast('📋 コピーしました');
+      });
+    }
+
+    function saveAssignments() {
+      localStorage.setItem('deadline_radar_assignments', JSON.stringify(assignments));
+      updateCategoryBadges();
+      renderSubjectFilter();
+      renderAssignments();
+
+      if (window.location.protocol.startsWith('http')) {
+        fetch('/api/assignments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(assignments)
+        }).catch(() => {});
+      }
+    }
+
+    // --- MAIN CATEGORY SWITCHER ---
+    function setMainCategory(cat) {
+      mainCategory = cat;
+      selectedSubject = 'ALL';
+
+      // Update button styles
+      const btns = {
+        'ALL': document.getElementById('catBtnAll'),
+        'academic': document.getElementById('catBtnAcademic'),
+        'personal': document.getElementById('catBtnPersonal'),
+      };
+
+      Object.keys(btns).forEach(k => {
+        const b = btns[k];
+        if (k === cat) {
+          b.className = 'px-4 py-2 rounded-xl transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md font-bold';
+        } else {
+          b.className = 'px-4 py-2 rounded-xl transition flex items-center justify-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/60 font-bold';
+        }
+      });
+
+      renderSubjectFilter();
+      renderAssignments();
+    }
+
+    function updateCategoryBadges() {
+      const active = assignments.filter(a => a.status !== 'submitted');
+      const countAll = active.length;
+      const countAcad = active.filter(a => a.category === 'academic').length;
+      const countPers = active.filter(a => a.category === 'personal').length;
+
+      document.getElementById('badgeCountAll').textContent = countAll;
+      document.getElementById('badgeCountAcademic').textContent = countAcad;
+      document.getElementById('badgeCountPersonal').textContent = countPers;
+    }
+
+    // --- CLOCK & COUNTDOWN ---
+    function updateLiveClock() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const str = `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} (${['日','月','火','水','木','金','土'][now.getDay()]}) ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      const clockEl = document.getElementById('currentClock');
+      if (clockEl) clockEl.textContent = str;
+
+      document.querySelectorAll('[data-deadline]').forEach(el => {
+        const deadlineStr = el.getAttribute('data-deadline');
+        const status = el.getAttribute('data-status');
+        el.innerHTML = formatCountdownBadge(deadlineStr, status);
+      });
+    }
+
+    function formatCountdownBadge(deadlineStr, status) {
+      if (status === 'submitted') {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+          完了済み
+        </span>`;
+      }
+
+      const now = new Date();
+      const deadline = new Date(deadlineStr);
+      const diffMs = deadline - now;
+
+      if (diffMs <= 0) {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-950/80 text-rose-300 border border-rose-600/50">
+          <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          期限超過
+        </span>`;
+      }
+
+      const diffSec = Math.floor(diffMs / 1000);
+      const days = Math.floor(diffSec / 86400);
+      const hours = Math.floor((diffSec % 86400) / 3600);
+      const minutes = Math.floor((diffSec % 3600) / 60);
+
+      if (diffMs < 24 * 3600 * 1000) {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-extrabold bg-rose-500/25 text-rose-400 border border-rose-500/50 animate-pulse-fast shadow-sm shadow-rose-500/30">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+          あと ${hours}時間 ${minutes}分 🚨
+        </span>`;
+      }
+
+      if (diffMs < 3 * 24 * 3600 * 1000) {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+          あと ${days}日 ${hours}時間 ⚠️
+        </span>`;
+      }
+
+      if (diffMs < 7 * 24 * 3600 * 1000) {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+          あと ${days}日
+        </span>`;
+      }
+
+      return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600/50">
+        あと ${days}日
+      </span>`;
+    }
+
+    // --- RENDER FUNCTIONS ---
+    function renderSubjectFilter() {
+      const container = document.getElementById('subjectFilterContainer');
+      
+      // Filter list based on mainCategory
+      let pool = assignments;
+      if (mainCategory !== 'ALL') {
+        pool = assignments.filter(a => a.category === mainCategory);
+      }
+
+      const subjects = ['ALL', ...new Set(pool.map(a => a.subject))];
+      
+      container.innerHTML = subjects.map(s => {
+        const isSelected = selectedSubject === s;
+        let activeClass = isSelected 
+          ? 'bg-slate-200 text-slate-900 font-bold shadow' 
+          : 'bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-700';
+
+        const label = s === 'ALL' ? 'すべて' : s;
+        return `<button onclick="filterBySubject('${s}')" class="px-2.5 py-1 rounded-md text-xs transition whitespace-nowrap ${activeClass}">
+          ${label}
+        </button>`;
+      }).join('');
+    }
+
+    function filterBySubject(s) {
+      selectedSubject = s;
+      renderSubjectFilter();
+      renderAssignments();
+    }
+
+    function setTab(tab) {
+      currentTab = tab;
+      ['tabActive', 'tabUrgent', 'tabAll', 'tabCompleted'].forEach(id => {
+        const el = document.getElementById(id);
+        el.className = 'px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/60 transition whitespace-nowrap';
+      });
+
+      const activeEl = document.getElementById(
+        tab === 'active' ? 'tabActive' :
+        tab === 'urgent' ? 'tabUrgent' :
+        tab === 'all' ? 'tabAll' : 'tabCompleted'
+      );
+      if (activeEl) {
+        activeEl.className = 'px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm transition whitespace-nowrap font-medium';
+      }
+
+      renderAssignments();
+    }
+
+    function renderAssignments() {
+      const now = new Date();
+      const searchKeyword = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+      const sortMode = document.getElementById('sortSelect')?.value || 'deadlineAsc';
+
+      // Base category filter
+      let pool = assignments;
+      if (mainCategory !== 'ALL') {
+        pool = pool.filter(a => a.category === mainCategory);
+      }
+
+      // Counts for stats (scoped to current category)
+      let urgent24hCount = 0;
+      let urgent3dCount = 0;
+      let pendingCount = 0;
+      let completedCount = 0;
+
+      pool.forEach(a => {
+        const diffMs = new Date(a.deadline) - now;
+        if (a.status !== 'submitted') {
+          pendingCount++;
+          if (diffMs > 0 && diffMs <= 24 * 3600 * 1000) urgent24hCount++;
+          if (diffMs > 0 && diffMs <= 3 * 24 * 3600 * 1000) urgent3dCount++;
+        } else {
+          completedCount++;
+        }
+      });
+
+      document.getElementById('statUrgent24h').textContent = urgent24hCount;
+      document.getElementById('statUrgent3d').textContent = urgent3dCount;
+      document.getElementById('statTotalPending').textContent = pendingCount;
+      document.getElementById('statCompleted').textContent = completedCount;
+
+      document.getElementById('countTabActive').textContent = pendingCount;
+      document.getElementById('countTabUrgent').textContent = urgent3dCount;
+      document.getElementById('countTabAll').textContent = pool.length;
+      document.getElementById('countTabCompleted').textContent = completedCount;
+
+      // Filtering list
+      let list = pool.filter(a => {
+        if (currentTab === 'active' && a.status === 'submitted') return false;
+        if (currentTab === 'completed' && a.status !== 'submitted') return false;
+        if (currentTab === 'urgent') {
+          if (a.status === 'submitted') return false;
+          const diffMs = new Date(a.deadline) - now;
+          if (diffMs <= 0 || diffMs > 3 * 24 * 3600 * 1000) return false;
+        }
+
+        if (selectedSubject !== 'ALL' && a.subject !== selectedSubject) return false;
+
+        if (searchKeyword) {
+          const matchTitle = a.title.toLowerCase().includes(searchKeyword);
+          const matchSub = a.subject.toLowerCase().includes(searchKeyword);
+          const matchMemo = (a.memo || '').toLowerCase().includes(searchKeyword);
+          const matchMethod = (a.submissionMethod || '').toLowerCase().includes(searchKeyword);
+          if (!matchTitle && !matchSub && !matchMemo && !matchMethod) return false;
+        }
+
+        return true;
+      });
+
+      // Sorting
+      list.sort((a, b) => {
+        if (sortMode === 'deadlineAsc') return new Date(a.deadline) - new Date(b.deadline);
+        if (sortMode === 'priorityDesc') {
+          const pMap = { high: 3, medium: 2, low: 1 };
+          return (pMap[b.priority] || 2) - (pMap[a.priority] || 2);
+        }
+        if (sortMode === 'subjectAsc') return a.subject.localeCompare(b.subject, 'ja');
+        if (sortMode === 'createdDesc') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        return 0;
+      });
+
+      const grid = document.getElementById('assignmentsGrid');
+      const empty = document.getElementById('emptyState');
+
+      if (list.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+
+      grid.innerHTML = list.map(a => {
+        const color = getSubjectColor(a.subject);
+        const deadlineDate = new Date(a.deadline);
+        const pad = n => String(n).padStart(2, '0');
+        const daysW = ['日','月','火','水','木','金','土'];
+        const formattedDeadline = `${deadlineDate.getFullYear()}/${pad(deadlineDate.getMonth()+1)}/${pad(deadlineDate.getDate())} (${daysW[deadlineDate.getDay()]}) ${pad(deadlineDate.getHours())}:${pad(deadlineDate.getMinutes())}`;
+        
+        const isDone = a.status === 'submitted';
+        const cardBg = isDone ? 'bg-slate-850/40 opacity-75 border-slate-800' : 'bg-slate-800/80 border-slate-700/80 shadow-md hover:border-slate-600';
+
+        const categoryTag = a.category === 'personal'
+          ? '<span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">👤 自分</span>'
+          : '<span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">📚 学業</span>';
+
+        const priorityBadge = a.priority === 'high' 
+          ? '<span class="text-[10px] px-1.5 py-0.5 rounded font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">重要度: 高</span>'
+          : a.priority === 'low'
+          ? '<span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-slate-700 text-slate-300">重要度: 低</span>'
+          : '';
+
+        return `
+          <div class="${cardBg} rounded-xl p-4 border transition duration-200 relative group flex flex-col md:flex-row md:items-center justify-between gap-4">
+            
+            <!-- Left Info Section -->
+            <div class="flex-1 space-y-2">
+              <!-- Category, Subject, Priority, Location -->
+              <div class="flex flex-wrap items-center gap-2">
+                ${categoryTag}
+                <button onclick="filterBySubject('${a.subject}')" class="px-2.5 py-0.5 rounded-full text-xs font-semibold ${color.bg} ${color.text} border ${color.border} hover:opacity-80 transition">
+                  ${a.subject}
+                </button>
+                ${priorityBadge}
+                ${a.submissionMethod ? `
+                  <span class="text-[11px] text-slate-400 flex items-center gap-1 bg-slate-900/60 px-2 py-0.5 rounded-md border border-slate-700/60">
+                    <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    ${a.submissionMethod}
+                  </span>` : ''}
+              </div>
+
+              <!-- Title -->
+              <h3 class="text-base font-bold text-white group-hover:text-indigo-300 transition ${isDone ? 'line-through text-slate-400' : ''}">
+                ${a.title}
+              </h3>
+
+              <!-- Memo -->
+              ${a.memo ? `<p class="text-xs text-slate-400 bg-slate-900/40 p-2 rounded-lg border border-slate-800/80">${a.memo}</p>` : ''}
+
+              <!-- Deadline & Remaining Time -->
+              <div class="flex flex-wrap items-center gap-3 text-xs pt-1">
+                <span class="text-slate-300 flex items-center gap-1.5 font-mono">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                  ${formattedDeadline}
+                </span>
+
+                <div data-deadline="${a.deadline}" data-status="${a.status}">
+                  ${formatCountdownBadge(a.deadline, a.status)}
+                </div>
+
+                ${isDone && a.completedAt ? `
+                  <span class="text-[11px] text-emerald-400 font-mono bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/50">
+                    提出完了: ${new Date(a.completedAt).getMonth()+1}/${new Date(a.completedAt).getDate()} ${String(new Date(a.completedAt).getHours()).padStart(2,'0')}:${String(new Date(a.completedAt).getMinutes()).padStart(2,'0')}
+                  </span>` : ''}
+              </div>
+            </div>
+
+            <!-- Right Actions Section -->
+            <div class="flex flex-wrap items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-700/60 justify-between md:justify-end">
+              
+              <!-- Status Toggle Button -->
+              <button onclick="cycleStatus('${a.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                a.status === 'submitted'
+                  ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/40'
+                  : a.status === 'in_progress'
+                  ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40'
+                  : 'bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600'
+              }">
+                ${a.status === 'submitted' 
+                  ? '✅ 提出完了' 
+                  : a.status === 'in_progress' 
+                  ? '⏳ 進行中' 
+                  : '⚪ 未着手'}
+              </button>
+
+              <!-- Quick Add to Calendar -->
+              <div class="relative group/cal">
+                <button onclick="addToCalendar('${a.id}')" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 hover:bg-slate-700 rounded-lg border border-slate-700 transition" title="カレンダー登録 (前日＆2時間前に通知)">
+                  <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Edit Button -->
+              <button onclick="openEditModal('${a.id}')" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 hover:bg-slate-700 rounded-lg border border-slate-700 transition" title="編集">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+              </button>
+
+              <!-- Ignore Button (Not for me) -->
+              <button onclick="ignoreAssignment('${a.id}')" class="p-2 text-slate-400 hover:text-amber-400 bg-slate-900/80 hover:bg-amber-950/40 rounded-lg border border-slate-700 hover:border-amber-800 transition" title="自分に関係ない課題として除外（今後同期されない）">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+              </button>
+
+              <!-- Delete Button -->
+              <button onclick="deleteAssignment('${a.id}')" class="p-2 text-slate-400 hover:text-rose-400 bg-slate-900/80 hover:bg-rose-950/40 rounded-lg border border-slate-700 hover:border-rose-800 transition" title="削除">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // --- ACTIONS ---
+    function cycleStatus(id) {
+      const a = assignments.find(x => x.id === id);
+      if (!a) return;
+
+      if (a.status === 'not_started') {
+        a.status = 'in_progress';
+        showToast(`「${a.title}」を進行中にしました`);
+      } else if (a.status === 'in_progress') {
+        a.status = 'submitted';
+        a.completedAt = new Date().toISOString();
+        showToast(`🎉「${a.title}」を完了にしました！`);
+      } else {
+        a.status = 'not_started';
+        a.completedAt = null;
+        showToast(`「${a.title}」を未着手に戻しました`);
+      }
+
+      saveAssignments();
+    }
+
+    function deleteAssignment(id) {
+      const a = assignments.find(x => x.id === id);
+      if (!a) return;
+      if (confirm(`「${a.title}」を削除してもよろしいですか？`)) {
+        assignments = assignments.filter(x => x.id !== id);
+        saveAssignments();
+        showToast('削除しました');
+      }
+    }
+
+    function ignoreAssignment(id) {
+      const a = assignments.find(x => x.id === id);
+      if (!a) return;
+      if (confirm(`「${a.title}」を自分に関係ない課題として除外しますか？\n（今後自動同期されても復活しません）`)) {
+        let ignored = JSON.parse(localStorage.getItem('deadline_radar_ignored') || '[]');
+        if (!ignored.includes(a.title)) ignored.push(a.title);
+        localStorage.setItem('deadline_radar_ignored', JSON.stringify(ignored));
+
+        assignments = assignments.filter(x => x.id !== id);
+        saveAssignments();
+
+        if (window.location.protocol.startsWith('http')) {
+          fetch('/api/ignore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: a.title })
+          }).catch(() => {});
+        }
+
+        showToast(`🚫「${a.title}」を除外しました`);
+      }
+    }
+
+    // --- CALENDAR INTEGRATION (.ics) ---
+    function addToCalendar(id) {
+      const a = assignments.find(x => x.id === id);
+      if (!a) return;
+
+      const d = new Date(a.deadline);
+      const start = new Date(d.getTime() - 2 * 3600 * 1000); // 2 hours before deadline
+      
+      const pad = n => String(n).padStart(2, '0');
+      const toICSDate = date => {
+        return date.getUTCFullYear() +
+          pad(date.getUTCMonth() + 1) +
+          pad(date.getUTCDate()) + 'T' +
+          pad(date.getUTCHours()) +
+          pad(date.getUTCMinutes()) +
+          pad(date.getUTCSeconds()) + 'Z';
+      };
+
+      const typePrefix = a.category === 'personal' ? '【やること】' : '【課題締切】';
+      const title = `${typePrefix}${a.subject}: ${a.title}`;
+      const desc = `期限: ${a.deadline}\n場所/方法: ${a.submissionMethod || '未指定'}\nメモ: ${a.memo || ''}`;
+      
+      const icsData = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Deadline Radar//JP',
+        'CALSCALE:GREGORIAN',
+        'BEGIN:VEVENT',
+        `UID:task-${a.id}-${Date.now()}@deadlineradar`,
+        `DTSTAMP:${toICSDate(new Date())}`,
+        `DTSTART:${toICSDate(start)}`,
+        `DTEND:${toICSDate(d)}`,
+        `SUMMARY:${title.replace(/\n/g, ' ')}`,
+        `DESCRIPTION:${desc.replace(/\n/g, '\\n')}`,
+        'BEGIN:VALARM',
+        'TRIGGER:-PT1D',
+        'ACTION:DISPLAY',
+        'DESCRIPTION:期限のリマインド（前日）',
+        'END:VALARM',
+        'BEGIN:VALARM',
+        'TRIGGER:-PT2H',
+        'ACTION:DISPLAY',
+        'DESCRIPTION:期限のリマインド（2時間前）',
+        'END:VALARM',
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\r\n');
+
+      const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${a.subject}_期日.ics`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast(`📅「${a.title}」のカレンダー通知ファイルをダウンロードしました！`);
+    }
+
+    // --- MODAL CONTROLS ---
+    function toggleCategoryForm(cat) {
+      const select = document.getElementById('formSubjectSelect');
+      const label = document.getElementById('subjectFieldLabel');
+      const methodLabel = document.getElementById('submissionMethodLabel');
+      const methodInput = document.getElementById('formSubmissionMethod');
+
+      select.innerHTML = '<option value="">選択してください...</option>';
+      if (cat === 'personal') {
+        label.innerHTML = '分類・ジャンル <span class="text-rose-400">*</span>';
+        methodLabel.textContent = '場所・方法 (任意)';
+        methodInput.placeholder = '例: 窓口, コンビニ, オンライン, スマホ';
+        PERSONAL_PRESETS.forEach(p => {
+          select.innerHTML += `<option value="${p}">${p}</option>`;
+        });
+      } else {
+        label.innerHTML = '科目名 <span class="text-rose-400">*</span>';
+        methodLabel.textContent = '提出先・方法';
+        methodInput.placeholder = '例: LETUS, CLASS, 授業内手渡し';
+        ACADEMIC_PRESETS.forEach(p => {
+          select.innerHTML += `<option value="${p}">${p}</option>`;
+        });
+      }
+    }
+
+    function openAddModal() {
+      document.getElementById('modalTitle').innerHTML = '<span>📝 タスクを追加</span>';
+      document.getElementById('formId').value = '';
+      
+      const defaultCat = mainCategory === 'personal' ? 'personal' : 'academic';
+      const catRadios = document.getElementsByName('formCategory');
+      catRadios.forEach(r => r.checked = (r.value === defaultCat));
+      toggleCategoryForm(defaultCat);
+
+      document.getElementById('formSubject').value = '';
+      document.getElementById('formSubjectSelect').value = '';
+      document.getElementById('formTitle').value = '';
+      
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(17, 0, 0, 0);
+      const pad = n => String(n).padStart(2, '0');
+      document.getElementById('formDeadline').value = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth()+1)}-${pad(tomorrow.getDate())}T17:00`;
+      
+      document.getElementById('formSubmissionMethod').value = defaultCat === 'academic' ? 'LETUS' : '';
+      document.getElementById('formPriority').value = 'medium';
+      document.getElementById('formStatus').value = 'not_started';
+      document.getElementById('formMemo').value = '';
+
+      document.getElementById('assignmentModal').classList.remove('hidden');
+    }
+
+    function openEditModal(id) {
+      const a = assignments.find(x => x.id === id);
+      if (!a) return;
+
+      document.getElementById('modalTitle').innerHTML = '<span>✏️ タスクを編集</span>';
+      document.getElementById('formId').value = a.id;
+      
+      const cat = a.category || 'academic';
+      const catRadios = document.getElementsByName('formCategory');
+      catRadios.forEach(r => r.checked = (r.value === cat));
+      toggleCategoryForm(cat);
+
+      document.getElementById('formSubject').value = a.subject;
+      document.getElementById('formSubjectSelect').value = a.subject;
+      document.getElementById('formTitle').value = a.title;
+      
+      const d = new Date(a.deadline);
+      const pad = n => String(n).padStart(2, '0');
+      document.getElementById('formDeadline').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      
+      document.getElementById('formSubmissionMethod').value = a.submissionMethod || '';
+      document.getElementById('formPriority').value = a.priority || 'medium';
+      document.getElementById('formStatus').value = a.status || 'not_started';
+      document.getElementById('formMemo').value = a.memo || '';
+
+      document.getElementById('assignmentModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('assignmentModal').classList.add('hidden');
+    }
+
+    function syncSubjectInput(val) {
+      if (val) {
+        document.getElementById('formSubject').value = val;
+      }
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('formId').value;
+      const catRadios = document.getElementsByName('formCategory');
+      let category = 'academic';
+      catRadios.forEach(r => { if (r.checked) category = r.value; });
+
+      const subject = document.getElementById('formSubject').value.trim();
+      const title = document.getElementById('formTitle').value.trim();
+      const deadline = document.getElementById('formDeadline').value;
+      const submissionMethod = document.getElementById('formSubmissionMethod').value.trim();
+      const priority = document.getElementById('formPriority').value;
+      const status = document.getElementById('formStatus').value;
+      const memo = document.getElementById('formMemo').value.trim();
+
+      if (id) {
+        const a = assignments.find(x => x.id === id);
+        if (a) {
+          a.category = category;
+          a.subject = subject;
+          a.title = title;
+          a.deadline = deadline;
+          a.submissionMethod = submissionMethod;
+          a.priority = priority;
+          a.status = status;
+          a.memo = memo;
+          if (status === 'submitted' && !a.completedAt) {
+            a.completedAt = new Date().toISOString();
+          }
+        }
+        showToast('更新しました');
+      } else {
+        const newAssignment = {
+          id: 'task-' + Date.now(),
+          category,
+          subject,
+          title,
+          deadline,
+          submissionMethod,
+          priority,
+          status,
+          memo,
+          createdAt: new Date().toISOString(),
+          completedAt: status === 'submitted' ? new Date().toISOString() : null
+        };
+        assignments.push(newAssignment);
+        showToast('登録しました');
+      }
+
+      saveAssignments();
+      closeModal();
+    }
+
+    // --- SUMMARY EXPORT & COPY ---
+    function copySummaryText() {
+      let pool = assignments;
+      if (mainCategory !== 'ALL') {
+        pool = pool.filter(a => a.category === mainCategory);
+      }
+      const active = pool.filter(a => a.status !== 'submitted');
+      active.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+
+      if (active.length === 0) {
+        showToast('現在、未完了のタスクはありません！🎉');
+        return;
+      }
+
+      const pad = n => String(n).padStart(2, '0');
+      const lines = ['【未完了リスト（期日順）】'];
+      active.forEach(a => {
+        const d = new Date(a.deadline);
+        const dateStr = `${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        const tag = a.category === 'personal' ? '[自分]' : '[学業]';
+        lines.push(`・${tag}[${dateStr}] ${a.subject}: ${a.title} (${a.submissionMethod || '未定'})`);
+      });
+
+      const text = lines.join('\n');
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('📋 リストをクリップボードにコピーしました！');
+      }).catch(() => {
+        showToast('コピーに失敗しました');
+      });
+    }
+
+    function exportJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(assignments, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "assignments.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('JSONファイルをダウンロードしました');
+    }
+
+    function resetToInitialData() {
+      if (confirm('初期データに戻しますか？（ローカルの変更は上書きされます）')) {
+        localStorage.removeItem('deadline_radar_assignments');
+        assignments = window.INITIAL_ASSIGNMENTS ? [...window.INITIAL_ASSIGNMENTS] : [];
+        saveAssignments();
+        showToast('初期データにリセットしました');
+      }
+    }
+
+    // --- LETUS IMPORT FUNCTIONS ---
+    let tempParsedAssignments = [];
+
+    function openLetusModal() {
+      document.getElementById('letusModal').classList.remove('hidden');
+      setLetusTab('paste');
+    }
+
+    function closeLetusModal() {
+      document.getElementById('letusModal').classList.add('hidden');
+    }
+
+    function setLetusTab(tab) {
+      const tabs = ['paste', 'ics', 'guide'];
+      tabs.forEach(t => {
+        const btn = document.getElementById('letusTab' + t.charAt(0).toUpperCase() + t.slice(1));
+        const pane = document.getElementById('letusPane' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (t === tab) {
+          btn.className = 'px-3 py-2 border-b-2 border-emerald-400 text-emerald-300 font-semibold';
+          pane.classList.remove('hidden');
+        } else {
+          btn.className = 'px-3 py-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200';
+          pane.classList.add('hidden');
+        }
+      });
+    }
+
+    function parseLetusInput() {
+      const text = document.getElementById('letusRawText').value;
+      if (!text.trim()) {
+        showToast('テキストを貼り付けてください');
+        return;
+      }
+      
+      const results = [];
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      const dateRegex = /(?:(\d{4})[年\/-]\s*)?(\d{1,2})[月\/-]\s*(\d{1,2})日?[^\d\n]*?(\d{1,2}):(\d{2})/;
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const match = line.match(dateRegex);
+        if (match) {
+          const year = match[1] || new Date().getFullYear();
+          const month = String(match[2]).padStart(2, '0');
+          const day = String(match[3]).padStart(2, '0');
+          const hour = String(match[4]).padStart(2, '0');
+          const minute = String(match[5]).padStart(2, '0');
+          const deadline = `${year}-${month}-${day}T${hour}:${minute}:00`;
+
+          let title = '';
+          let subject = '学業';
+          
+          for (let j = Math.max(0, i - 4); j < i; j++) {
+            const prev = lines[j];
+            for (const p of ACADEMIC_PRESETS) {
+              if (prev.includes(p) || p.includes(prev)) {
+                subject = p;
+                break;
+              }
+            }
+            if (!title && !prev.includes('カレンダー') && !prev.includes('イベント') && !prev.includes('LETUS') && prev.length > 2) {
+              title = prev;
+            }
+          }
+
+          if (!title) {
+            title = line.replace(dateRegex, '').replace(/期日[:：]?|締切[:：]?/g, '').trim() || 'LETUS課題';
+          }
+
+          if (!results.some(r => r.deadline === deadline && r.title === title)) {
+            results.push({
+              id: 'task-letus-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+              category: 'academic',
+              subject: subject,
+              title: title,
+              deadline: deadline,
+              submissionMethod: 'LETUS',
+              priority: 'medium',
+              status: 'not_started',
+              memo: 'LETUSより自動インポート',
+              createdAt: new Date().toISOString(),
+              completedAt: null
+            });
+          }
+        }
+      }
+
+      tempParsedAssignments = results;
+      const previewBox = document.getElementById('letusParsedPreview');
+      const countEl = document.getElementById('parsedCount');
+      const listEl = document.getElementById('parsedListContainer');
+      const btn = document.getElementById('btnCommitLetus');
+
+      if (results.length === 0) {
+        showToast('課題の日時を検出できませんでした。チャットに直接貼り付けてみてください！');
+        previewBox.classList.add('hidden');
+        btn.disabled = true;
+        return;
+      }
+
+      countEl.textContent = results.length;
+      listEl.innerHTML = results.map(r => `
+        <div class="flex items-center justify-between p-2 rounded bg-slate-800/80 border border-slate-700">
+          <div>
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 mr-1.5">${r.subject}</span>
+            <span class="font-medium text-slate-200">${r.title}</span>
+          </div>
+          <span class="font-mono text-emerald-400 text-[11px] whitespace-nowrap ml-2">${r.deadline.replace('T', ' ').substring(5, 16)}</span>
+        </div>
+      `).join('');
+
+      previewBox.classList.remove('hidden');
+      btn.disabled = false;
+      showToast(`${results.length}件の課題を検出しました！`);
+    }
+
+    function commitParsedAssignments() {
+      if (tempParsedAssignments.length === 0) return;
+      
+      let addedCount = 0;
+      tempParsedAssignments.forEach(newItem => {
+        const exists = assignments.some(a => a.title === newItem.title && a.deadline === newItem.deadline);
+        if (!exists) {
+          assignments.push(newItem);
+          addedCount++;
+        }
+      });
+
+      saveAssignments();
+      closeLetusModal();
+      showToast(`🎉 ${addedCount}件の課題を登録・更新しました！`);
+    }
+
+    function handleICSFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        parseAndLoadICS(evt.target.result);
+      };
+      reader.readAsText(file);
+    }
+
+    function parseAndLoadICS(icsText) {
+      const events = icsText.split('BEGIN:VEVENT');
+      const results = [];
+
+      events.slice(1).forEach(ev => {
+        const summaryMatch = ev.match(/SUMMARY:(.+)/);
+        const dtendMatch = ev.match(/DTEND(?:;[^:]+)?:(\d{8}T\d{6}Z?|\d{8})/);
+        const descMatch = ev.match(/DESCRIPTION:(.+)/);
+
+        if (summaryMatch && dtendMatch) {
+          const title = summaryMatch[1].trim();
+          const rawDate = dtendMatch[1];
+          
+          let deadline = '';
+          if (rawDate.length >= 15) {
+            const y = rawDate.substr(0, 4);
+            const m = rawDate.substr(4, 2);
+            const d = rawDate.substr(6, 2);
+            const hh = rawDate.substr(9, 2);
+            const mm = rawDate.substr(11, 2);
+            deadline = `${y}-${m}-${d}T${hh}:${mm}:00`;
+          }
+
+          let subject = '学業';
+          for (const p of ACADEMIC_PRESETS) {
+            if (title.includes(p) || (descMatch && descMatch[1].includes(p))) {
+              subject = p;
+              break;
+            }
+          }
+
+          if (deadline) {
+            results.push({
+              id: 'task-ics-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+              category: 'academic',
+              subject: subject,
+              title: title,
+              deadline: deadline,
+              submissionMethod: 'LETUS',
+              priority: 'medium',
+              status: 'not_started',
+              memo: descMatch ? descMatch[1].replace(/\\n/g, ' ') : 'カレンダーよりインポート',
+              createdAt: new Date().toISOString(),
+              completedAt: null
+            });
+          }
+        }
+      });
+
+      if (results.length > 0) {
+        tempParsedAssignments = results;
+        commitParsedAssignments();
+      } else {
+        showToast('.ics ファイルから課題を読み込めませんでした');
+      }
+    }
+
+    function triggerSubmissionScan() {
+      if (window.location.protocol.startsWith('http')) {
+        showToast('🔍 LETUSの提出状況スキャンを開始しています...');
+        fetch('/api/scan-submissions', { method: 'POST' })
+          .then(res => res.json())
+          .then(() => {
+            showToast('ブラウザでLETUSを確認中... 完了まで少しお待ちください');
+          })
+          .catch(() => {
+            showToast('check_submissions.bat を実行してスキャンしてください');
+          });
+      } else {
+        alert('提出状況の自動スキャンを実行するには、フォルダ内の「check_submissions.bat」をダブルクリックしてください！\n\n（LETUS画面上の緑色マークを自動で確認してダッシュボードを更新します）');
+      }
+    }
+
+    function openHelpModal() { document.getElementById('helpModal').classList.remove('hidden'); }
+    function closeHelpModal() { document.getElementById('helpModal').classList.add('hidden'); }
+
+    function toggleTheme() {
+      const root = document.getElementById('bodyRoot');
+      const html = document.documentElement;
+      const isDark = html.classList.contains('dark');
+      
+      if (isDark) {
+        html.classList.remove('dark');
+        document.getElementById('themeIconSun').classList.remove('hidden');
+        document.getElementById('themeIconMoon').classList.add('hidden');
+        root.classList.remove('bg-slate-900', 'text-slate-100');
+        root.classList.add('bg-slate-50', 'text-slate-900');
+      } else {
+        html.classList.add('dark');
+        document.getElementById('themeIconSun').classList.add('hidden');
+        document.getElementById('themeIconMoon').classList.remove('hidden');
+        root.classList.remove('bg-slate-50', 'text-slate-900');
+        root.classList.add('bg-slate-900', 'text-slate-100');
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const msgEl = document.getElementById('toastMsg');
+      msgEl.textContent = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

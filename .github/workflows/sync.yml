@@ -1,0 +1,54 @@
+name: Cloud LETUS Sync & Deadline Radar
+
+on:
+  schedule:
+    # 毎日 08:00 JST (23:00 UTC)
+    - cron: '0 23 * * *'
+    # 毎日 12:00 JST (03:00 UTC)
+    - cron: '0 3 * * *'
+    # 毎日 18:00 JST (09:00 UTC)
+    - cron: '0 9 * * *'
+  workflow_dispatch: # GitHubのブラウザ画面から「今すぐ実行」できる手動ボタン
+
+permissions:
+  contents: write # 課題データをリポジトリにコミット・プッシュする権限
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run LETUS Sync
+        env:
+          LETUS_CALENDAR_URL: ${{ secrets.LETUS_CALENDAR_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python sync_letus.py
+
+      - name: Check Deadlines & Send Discord Notification
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python check_deadlines.py
+
+      - name: Commit and push if assignments changed
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add assignments.json assignments.js
+          if git diff --staged --quiet; then
+            echo "No changes in assignments data."
+          else
+            git commit -m "Auto-sync LETUS assignments [skip ci]"
+            git push
+          fi
