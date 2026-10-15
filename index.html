@@ -49,80 +49,78 @@
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200" id="bodyRoot">
 
   <!-- TOP NAVIGATION BAR -->
-  <header class="sticky top-0 z-30 bg-slate-900/85 backdrop-blur-md border-b border-slate-800">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <!-- Title & Live Clock -->
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-rose-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
+      
+      <!-- Left: Title & Live Clock -->
+      <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-rose-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
+          <svg class="w-4 h-4 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <div>
-          <div class="flex items-center space-x-2">
-            <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-              期限・やる事レーダー
-              <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">学業＆自分</span>
+        <div class="truncate">
+          <div class="flex items-center space-x-1.5">
+            <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white truncate">
+              課題・やる事レーダー
             </h1>
+            <span class="hidden md:inline-block text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium shrink-0">理科大・物理B組</span>
           </div>
-          <div class="text-xs text-slate-400 font-mono flex items-center gap-2" id="currentClock">
+          <div class="text-[11px] text-slate-400 font-mono flex items-center gap-1.5" id="currentClock">
             2026/10/14 --:--:--
           </div>
         </div>
       </div>
 
-        <a href="https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 text-xs font-medium text-indigo-300 hover:text-white bg-indigo-500/15 hover:bg-indigo-500/25 rounded-lg border border-indigo-500/30 transition flex items-center gap-1.5" title="LETUSの今後のイベントページを別タブで開く">
+      <!-- Right: Action Buttons -->
+      <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+        
+        <!-- PC-Only Buttons (hidden on mobile) -->
+        <a href="https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming" target="_blank" rel="noopener noreferrer" class="hidden xl:flex px-2.5 py-1.5 text-xs font-medium text-indigo-300 hover:text-white bg-indigo-500/15 hover:bg-indigo-500/25 rounded-lg border border-indigo-500/30 transition items-center gap-1.5" title="LETUSを開く">
           <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
-          <span class="hidden lg:inline">LETUS開く</span>
+          <span>LETUS開く</span>
         </a>
 
-        <button onclick="triggerSubmissionScan()" class="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-lg shadow-md shadow-blue-600/20 transition flex items-center gap-1.5" title="LETUSを自動で開いて緑色（提出済み）を安全にスキャン (READ-ONLY)">
-          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span class="hidden sm:inline">提出状況スキャン</span>
-        </button>
-
-        <button onclick="openLetusModal()" class="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-lg shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5" title="LETUSの画面貼り付けやカレンダーから一括取り込み">
+        <button onclick="openLetusModal()" class="hidden lg:flex px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-lg shadow-md shadow-emerald-600/20 transition items-center gap-1.5" title="LETUSの画面貼り付けやカレンダーから一括取り込み">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
           </svg>
-          <span>LETUS一括取り込み</span>
+          <span>LETUS取り込み</span>
         </button>
 
-        <button onclick="openHelpModal()" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition flex items-center gap-1.5" title="使い方ガイド">
+        <button onclick="openHelpModal()" class="hidden md:flex px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition items-center gap-1.5" title="AI頼み方ガイド">
           <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <span class="hidden sm:inline">AI頼み方</span>
+          <span>ガイド</span>
         </button>
 
-        <button onclick="openMobileModal()" class="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 rounded-lg shadow-md shadow-violet-600/20 transition flex items-center gap-1.5" title="スマホで開く（QRコード）">
-          <svg class="w-4 h-4 text-violet-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-          </svg>
-          <span class="hidden sm:inline">📱 スマホで開く</span>
-          <span class="sm:hidden">📱</span>
-        </button>
-
-        <button onclick="copySummaryText()" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition flex items-center gap-1.5" title="未完了リストをコピー（チャットやLINEに貼れる）">
+        <button onclick="copySummaryText()" class="hidden sm:flex px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition items-center gap-1.5" title="未完了リストをコピー">
           <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
           </svg>
-          <span class="hidden md:inline">一覧コピー</span>
+          <span>コピー</span>
         </button>
 
-        <button onclick="openAddModal()" class="px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 rounded-lg shadow-md shadow-indigo-500/25 transition flex items-center gap-1.5">
+        <!-- ADD BUTTON (Always visible, prominent) -->
+        <button onclick="openAddModal()" class="px-3 py-1.5 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 rounded-lg shadow-md shadow-indigo-500/25 transition flex items-center gap-1 shrink-0">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
           <span>追加</span>
         </button>
 
+        <!-- MOBILE MENU BUTTON (Visible only on mobile/tablet) -->
+        <button onclick="openMobileMenuModal()" class="lg:hidden p-2 text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition shrink-0" title="メニュー">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
         <!-- Theme toggle -->
-        <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition" title="テーマ切り替え">
+        <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition shrink-0" title="テーマ切り替え">
           <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
@@ -130,27 +128,28 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
           </svg>
         </button>
+
       </div>
     </div>
   </header>
 
   <!-- MAIN CONTAINER -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-5 space-y-4 sm:space-y-5">
 
     <!-- MASTER CATEGORY SWITCHER (Academic vs Personal) -->
-    <div class="bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700/80 flex items-center justify-between gap-2 shadow-inner">
+    <div class="bg-slate-800/80 p-1 sm:p-1.5 rounded-2xl border border-slate-700/80 flex items-center justify-between gap-1 shadow-inner">
       <div class="grid grid-cols-3 w-full sm:w-auto sm:flex sm:items-center gap-1 text-xs sm:text-sm font-bold">
-        <button onclick="setMainCategory('ALL')" id="catBtnAll" class="px-4 py-2 rounded-xl transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md">
-          <span>🌟 全体</span>
-          <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-800/60" id="badgeCountAll">0</span>
+        <button onclick="setMainCategory('ALL')" id="catBtnAll" class="px-2 sm:px-4 py-2 rounded-xl transition flex items-center justify-center gap-1 sm:gap-2 bg-indigo-600 text-white shadow-md">
+          <span class="truncate">🌟 全体</span>
+          <span class="text-[11px] px-1.5 py-0.2 rounded-full bg-indigo-800/60" id="badgeCountAll">0</span>
         </button>
-        <button onclick="setMainCategory('academic')" id="catBtnAcademic" class="px-4 py-2 rounded-xl transition flex items-center justify-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/60">
-          <span>📚 学業の課題</span>
-          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-900/60 text-slate-400" id="badgeCountAcademic">0</span>
+        <button onclick="setMainCategory('academic')" id="catBtnAcademic" class="px-2 sm:px-4 py-2 rounded-xl transition flex items-center justify-center gap-1 sm:gap-2 text-slate-300 hover:text-white hover:bg-slate-700/60">
+          <span class="truncate">📚 学業</span>
+          <span class="text-[11px] px-1.5 py-0.2 rounded-full bg-slate-900/60 text-slate-400" id="badgeCountAcademic">0</span>
         </button>
-        <button onclick="setMainCategory('personal')" id="catBtnPersonal" class="px-4 py-2 rounded-xl transition flex items-center justify-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/60">
-          <span>👤 自分のやること</span>
-          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-900/60 text-slate-400" id="badgeCountPersonal">0</span>
+        <button onclick="setMainCategory('personal')" id="catBtnPersonal" class="px-2 sm:px-4 py-2 rounded-xl transition flex items-center justify-center gap-1 sm:gap-2 text-slate-300 hover:text-white hover:bg-slate-700/60">
+          <span class="truncate">👤 自分</span>
+          <span class="text-[11px] px-1.5 py-0.2 rounded-full bg-slate-900/60 text-slate-400" id="badgeCountPersonal">0</span>
         </button>
       </div>
 
@@ -160,79 +159,79 @@
     </div>
 
     <!-- KPI STATS CARDS -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
       <!-- 24h Emergency -->
-      <div class="bg-slate-800/60 rounded-xl p-4 border border-rose-500/30 relative overflow-hidden backdrop-blur group">
+      <div class="bg-slate-800/60 rounded-xl p-3 sm:p-4 border border-rose-500/30 relative overflow-hidden backdrop-blur group">
         <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-rose-500/10 rounded-full blur-xl group-hover:bg-rose-500/20 transition"></div>
         <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold text-rose-400 flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse-fast"></span>
             24時間以内
           </span>
-          <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-3xl font-extrabold text-white" id="statUrgent24h">0</span>
+        <div class="mt-1.5 sm:mt-2 flex items-baseline gap-1.5">
+          <span class="text-2xl sm:text-3xl font-extrabold text-white" id="statUrgent24h">0</span>
           <span class="text-xs text-slate-400">件</span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1">最優先で終わらせる！</p>
+        <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">最優先で提出！</p>
       </div>
 
       <!-- 3 Days Warning -->
-      <div class="bg-slate-800/60 rounded-xl p-4 border border-amber-500/30 relative overflow-hidden backdrop-blur group">
+      <div class="bg-slate-800/60 rounded-xl p-3 sm:p-4 border border-amber-500/30 relative overflow-hidden backdrop-blur group">
         <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition"></div>
         <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold text-amber-400 flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-amber-400"></span>
             3日以内
           </span>
-          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-3xl font-extrabold text-white" id="statUrgent3d">0</span>
+        <div class="mt-1.5 sm:mt-2 flex items-baseline gap-1.5">
+          <span class="text-2xl sm:text-3xl font-extrabold text-white" id="statUrgent3d">0</span>
           <span class="text-xs text-slate-400">件</span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1">今週中に提出・消化</p>
+        <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">今週中に消化</p>
       </div>
 
       <!-- Total Pending -->
-      <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/80 relative overflow-hidden backdrop-blur group">
+      <div class="bg-slate-800/60 rounded-xl p-3 sm:p-4 border border-slate-700/80 relative overflow-hidden backdrop-blur group">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold text-indigo-400 flex items-center gap-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold text-indigo-400 flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
-            未完了 (残りタスク)
+            未完了
           </span>
-          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-3xl font-extrabold text-white" id="statTotalPending">0</span>
+        <div class="mt-1.5 sm:mt-2 flex items-baseline gap-1.5">
+          <span class="text-2xl sm:text-3xl font-extrabold text-white" id="statTotalPending">0</span>
           <span class="text-xs text-slate-400">件</span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1">未着手 & 進行中</p>
+        <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">進行中・未着手</p>
       </div>
 
       <!-- Completed -->
-      <div class="bg-slate-800/60 rounded-xl p-4 border border-emerald-500/20 relative overflow-hidden backdrop-blur group">
+      <div class="bg-slate-800/60 rounded-xl p-3 sm:p-4 border border-emerald-500/20 relative overflow-hidden backdrop-blur group">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
             完了済み
           </span>
-          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-3xl font-extrabold text-white" id="statCompleted">0</span>
+        <div class="mt-1.5 sm:mt-2 flex items-baseline gap-1.5">
+          <span class="text-2xl sm:text-3xl font-extrabold text-white" id="statCompleted">0</span>
           <span class="text-xs text-slate-400">件</span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1">ナイス消化！🎉</p>
+        <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">ナイス消化！🎉</p>
       </div>
     </div>
 
@@ -631,6 +630,48 @@
     </div>
   </div>
 
+  <!-- MOBILE ACTION MENU MODAL -->
+  <div id="mobileMenuModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-3xl sm:rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-5 space-y-3">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <span>⚙️ 便利メニュー</span>
+        </h3>
+        <button onclick="closeMobileMenuModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 gap-2 text-xs">
+        <a href="https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming" target="_blank" rel="noopener noreferrer" class="p-3 bg-slate-900/80 hover:bg-slate-700 text-indigo-300 hover:text-white rounded-xl border border-slate-700/80 flex items-center gap-2.5 font-semibold">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+          <span>LETUS 今後のイベントを開く</span>
+        </a>
+
+        <button onclick="closeMobileMenuModal(); openLetusModal()" class="p-3 bg-slate-900/80 hover:bg-slate-700 text-emerald-300 hover:text-white rounded-xl border border-slate-700/80 flex items-center gap-2.5 font-semibold text-left">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+          <span>LETUS 一括取り込み（カレンダー・貼り付け）</span>
+        </button>
+
+        <button onclick="closeMobileMenuModal(); copySummaryText()" class="p-3 bg-slate-900/80 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl border border-slate-700/80 flex items-center gap-2.5 font-semibold text-left">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+          <span>未完了リストをコピー（チャット・LINEに貼れる）</span>
+        </button>
+
+        <button onclick="closeMobileMenuModal(); openHelpModal()" class="p-3 bg-slate-900/80 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl border border-slate-700/80 flex items-center gap-2.5 font-semibold text-left">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>AI頼み方ガイド</span>
+        </button>
+      </div>
+
+      <div class="pt-2">
+        <button onclick="closeMobileMenuModal()" class="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-bold transition">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION -->
   <div id="toast" class="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 transform translate-y-20 opacity-0 transition duration-300 pointer-events-none text-xs sm:text-sm font-medium">
     <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -799,6 +840,14 @@
 
     function closeMobileModal() {
       document.getElementById('mobileModal').classList.add('hidden');
+    }
+
+    function openMobileMenuModal() {
+      document.getElementById('mobileMenuModal').classList.remove('hidden');
+    }
+
+    function closeMobileMenuModal() {
+      document.getElementById('mobileMenuModal').classList.add('hidden');
     }
 
     function copyMobileUrl() {
@@ -1081,14 +1130,14 @@
           : '';
 
         return `
-          <div class="${cardBg} rounded-xl p-4 border transition duration-200 relative group flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="${cardBg} rounded-xl p-3.5 sm:p-4 border transition duration-200 relative group flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
             
             <!-- Left Info Section -->
-            <div class="flex-1 space-y-2">
+            <div class="flex-1 space-y-2 min-w-0">
               <!-- Category, Subject, Priority, Location -->
-              <div class="flex flex-wrap items-center gap-2">
+              <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 ${categoryTag}
-                <button onclick="filterBySubject('${a.subject}')" class="px-2.5 py-0.5 rounded-full text-xs font-semibold ${color.bg} ${color.text} border ${color.border} hover:opacity-80 transition">
+                <button onclick="filterBySubject('${a.subject}')" class="px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-semibold ${color.bg} ${color.text} border ${color.border} hover:opacity-80 transition">
                   ${a.subject}
                 </button>
                 ${priorityBadge}
@@ -1100,17 +1149,17 @@
               </div>
 
               <!-- Title -->
-              <h3 class="text-base font-bold text-white group-hover:text-indigo-300 transition ${isDone ? 'line-through text-slate-400' : ''}">
+              <h3 class="text-sm sm:text-base font-bold text-white group-hover:text-indigo-300 transition break-words ${isDone ? 'line-through text-slate-400' : ''}">
                 ${a.title}
               </h3>
 
               <!-- Memo -->
-              ${a.memo ? `<p class="text-xs text-slate-400 bg-slate-900/40 p-2 rounded-lg border border-slate-800/80">${a.memo}</p>` : ''}
+              ${a.memo ? `<p class="text-xs text-slate-400 bg-slate-900/40 p-2 rounded-lg border border-slate-800/80 break-words">${a.memo}</p>` : ''}
 
               <!-- Deadline & Remaining Time -->
-              <div class="flex flex-wrap items-center gap-3 text-xs pt-1">
-                <span class="text-slate-300 flex items-center gap-1.5 font-mono">
-                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs pt-0.5">
+                <span class="text-slate-300 flex items-center gap-1.5 font-mono text-[11px] sm:text-xs">
+                  <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                   </svg>
                   ${formattedDeadline}
@@ -1121,17 +1170,17 @@
                 </div>
 
                 ${isDone && a.completedAt ? `
-                  <span class="text-[11px] text-emerald-400 font-mono bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/50">
+                  <span class="text-[10px] sm:text-[11px] text-emerald-400 font-mono bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/50">
                     提出完了: ${new Date(a.completedAt).getMonth()+1}/${new Date(a.completedAt).getDate()} ${String(new Date(a.completedAt).getHours()).padStart(2,'0')}:${String(new Date(a.completedAt).getMinutes()).padStart(2,'0')}
                   </span>` : ''}
               </div>
             </div>
 
             <!-- Right Actions Section -->
-            <div class="flex flex-wrap items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-700/60 justify-between md:justify-end">
+            <div class="flex items-center gap-1.5 sm:gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-700/60 justify-between md:justify-end shrink-0">
               
               <!-- Status Toggle Button -->
-              <button onclick="cycleStatus('${a.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+              <button onclick="cycleStatus('${a.id}')" class="flex-1 md:flex-initial justify-center px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                 a.status === 'submitted'
                   ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/40'
                   : a.status === 'in_progress'
@@ -1145,35 +1194,35 @@
                   : '⚪ 未着手'}
               </button>
 
-              <!-- Quick Add to Calendar -->
-              <div class="relative group/cal">
-                <button onclick="addToCalendar('${a.id}')" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 hover:bg-slate-700 rounded-lg border border-slate-700 transition" title="カレンダー登録 (前日＆2時間前に通知)">
+              <div class="flex items-center gap-1">
+                <!-- Quick Add to Calendar -->
+                <button onclick="addToCalendar('${a.id}')" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 hover:bg-slate-700 rounded-lg border border-slate-700 transition" title="カレンダー登録">
                   <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                   </svg>
                 </button>
+
+                <!-- Edit Button -->
+                <button onclick="openEditModal('${a.id}')" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 hover:bg-slate-700 rounded-lg border border-slate-700 transition" title="編集">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                </button>
+
+                <!-- Ignore Button (Not for me) -->
+                <button onclick="ignoreAssignment('${a.id}')" class="p-2 text-slate-400 hover:text-amber-400 bg-slate-900/80 hover:bg-amber-950/40 rounded-lg border border-slate-700 hover:border-amber-800 transition" title="対象外（除外）">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                </button>
+
+                <!-- Delete Button -->
+                <button onclick="deleteAssignment('${a.id}')" class="p-2 text-slate-400 hover:text-rose-400 bg-slate-900/80 hover:bg-rose-950/40 rounded-lg border border-slate-700 hover:border-rose-800 transition" title="削除">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
               </div>
-
-              <!-- Edit Button -->
-              <button onclick="openEditModal('${a.id}')" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 hover:bg-slate-700 rounded-lg border border-slate-700 transition" title="編集">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                </svg>
-              </button>
-
-              <!-- Ignore Button (Not for me) -->
-              <button onclick="ignoreAssignment('${a.id}')" class="p-2 text-slate-400 hover:text-amber-400 bg-slate-900/80 hover:bg-amber-950/40 rounded-lg border border-slate-700 hover:border-amber-800 transition" title="自分に関係ない課題として除外（今後同期されない）">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
-              </button>
-
-              <!-- Delete Button -->
-              <button onclick="deleteAssignment('${a.id}')" class="p-2 text-slate-400 hover:text-rose-400 bg-slate-900/80 hover:bg-rose-950/40 rounded-lg border border-slate-700 hover:border-rose-800 transition" title="削除">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                </svg>
-              </button>
             </div>
           </div>
         `;
