@@ -536,5 +536,19 @@ window.INITIAL_ASSIGNMENTS = [
     "folderPath": null,
     "createdAt": "2026-10-16T01:12:50.213572+09:00",
     "completedAt": "2026-10-16T01:15:03.329761+09:00"
+  },
+  {
+    "id": "custom-20261016012647",
+    "category": "personal",
+    "subject": "個人",
+    "title": "プラネ原稿を覚える",
+    "deadline": "2026-10-17T12:00:00",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "できれば金曜中に完了したい",
+    "folderPath": null,
+    "createdAt": "2026-10-16T01:26:47.910161+09:00",
+    "completedAt": null
   }
 ];
