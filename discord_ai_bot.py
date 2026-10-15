@@ -4,7 +4,7 @@ Powered by Google Gemini (Auto-fallback: 3.8 -> 3.7 -> 3.6 -> 3.5 -> 2.5) & disc
 Features:
 - 24/7 Cloud Ready (Embedded aiohttp health check for Render/Koyeb)
 - Interactive Dialog & Confirmation UI (Discord Buttons)
-- Two-Axis Deadline Support (Final Deadline + Target Goal Date)
+- Simple & Robust 1-Deadline + Natural Memo Architecture
 - Cloud Git Sync via GitHub API (with local git push fallback)
 """
 
@@ -32,7 +32,7 @@ from discord.ext import commands
 from aiohttp import web
 
 # -------------------------------------------------------------
-# Configuration & Paths (Local + Cloud Env Support)
+# Configuration & Paths (Local + Cloud Support)
 # -------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
@@ -64,7 +64,6 @@ CONFIG = load_config()
 
 def load_assignments():
     if not os.path.exists(JSON_PATH):
-        # In cloud fresh clone, fallback to raw GitHub fetch if file missing
         try:
             url = "https://raw.githubusercontent.com/fujitomo1123581321-byte/task-radar/main/assignments.json"
             req = urllib.request.Request(url, headers={"User-Agent": "TaskRadarBot"})
@@ -118,7 +117,6 @@ def git_push_sync(commit_msg="Update assignments via Discord Bot"):
     """Dual-mode sync: GitHub API (Cloud) or Git Subprocess (Local)"""
     gh_token = CONFIG.get("github_token") or os.environ.get("GITHUB_TOKEN")
     
-    # 1. If GitHub Token is available, sync via GitHub API
     if gh_token:
         try:
             with open(JSON_PATH, "rb") as f:
@@ -133,7 +131,6 @@ def git_push_sync(commit_msg="Update assignments via Discord Bot"):
         except Exception as e:
             print(f"[Cloud Git Sync Warning] API sync failed, trying local git: {e}")
 
-    # 2. Local git push fallback
     try:
         subprocess.run(["git", "add", "assignments.json", "assignments.js"], cwd=BASE_DIR, check=True, capture_output=True)
         status = subprocess.run(["git", "status", "--porcelain"], cwd=BASE_DIR, capture_output=True, text=True)
@@ -223,7 +220,7 @@ def parse_json_from_ai(ai_text: str):
         raise ValueError("Could not parse JSON from AI output.")
 
 # -------------------------------------------------------------
-# Dialog Flow Logic (Two-Axis Deadline: Final + Target Goal)
+# Dialog Flow Logic (Clean 1-Deadline + Natural Memo Architecture)
 # -------------------------------------------------------------
 def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
     assignments = load_assignments()
@@ -254,22 +251,18 @@ def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
 【現在の未完了タスク一覧】:
 {json.dumps(tasks_summary, ensure_ascii=False, indent=2)}
 
-【タスク追加（add）の対話ルール & 2軸締め切り管理】:
+【タスク追加（add）の対話ルール】:
 - タスクに必要な情報:
   1. `title`: タスクの内容（例: レポート提出、小テスト、原稿を覚えるなど）
-  2. `subject`: 科目名または分類（例: 電磁気学、英語、個人、アルバイトなど）。
-  3. `deadline`: 本締切・最終提出期限（YYYY-MM-DDTHH:MM:SS 形式）。
-  4. `targetDate`: マイ目標完了日時（YYYY-MM-DDTHH:MM:SS 形式、指定がなければnull）。
-     ★超重要ルール:
-     ユーザーが「締めは土曜正午だけどできれば金曜じゅうに完了したい」のように言った場合:
-     - `deadline`: 土曜正午 (2026-10-17T12:00:00) をセット
-     - `targetDate`: 金曜23:59 (2026-10-16T23:59:00) をセット
-     - `memo`: "できれば金曜中完了目標（本締切: 土曜正午）" などをセット
+  2. `subject`: 科目名または分類（例: 電磁気学、英語、個人、アルバイトなど）。指定がなければ「一般」または「個人」。
+  3. `deadline`: 締切日時（YYYY-MM-DDTHH:MM:SS 形式）。
+  4. `memo`: ユーザーの補足や希望（例: 「できれば金曜中に完了したい」などの要望があれば、そのままメモ欄に記載してください）。
 - 判定基準 (`is_ready`):
   - 締切に関する言及が一切ない場合（例: 「レポート追加」「タスク登録」のみ）:
     `is_ready` は false にし、`ask_question` で締切を優しく質問してください。
-  - 締切や目標が指定されている場合:
-    現在時刻 {now_str} を基準に計算し、`is_ready` は true にしてください。
+  - 締切が指定されている場合（例: 「土曜正午」「明日の18時」「10/25」など）:
+    現在時刻 {now_str} を基準に正確に計算して `deadline` にセットし、`is_ready` は true にしてください。
+    ※もし「締めは土曜正午だけどできれば金曜中に」と言われたら、締切は土曜正午（2026-10-17T12:00:00）にセットし、memoに「できれば金曜中に完了したい」と記載してください。
 
 【その他のアクション】:
 - "complete": タスク完了（未完了タスクから一致する `matched_task_id` を特定）
@@ -286,11 +279,10 @@ def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
   "draft": {{
     "title": "タスク名",
     "subject": "科目または分類",
-    "deadline": "YYYY-MM-DDTHH:MM:SS（本締切）",
-    "targetDate": "YYYY-MM-DDTHH:MM:SS（前倒し目標日時、なければnull）",
+    "deadline": "YYYY-MM-DDTHH:MM:SS",
     "category": "academic" | "personal",
     "priority": "high" | "medium" | "low",
-    "memo": "詳細メモ"
+    "memo": "詳細メモ（できれば金曜中などの補足があれば記載）"
   }},
   "ask_question": "不足情報がある場合の質問文",
   "matched_task_id": "completeの場合のID",
@@ -333,7 +325,7 @@ class TaskConfirmView(discord.ui.View):
         category = self.draft.get("category", "personal")
         priority = self.draft.get("priority", "medium")
         dl = self.draft.get("deadline")
-        target_dl = self.draft.get("targetDate")
+        memo = self.draft.get("memo") or "Discordより登録"
         
         if not dl:
             dl = (datetime.now(JST) + timedelta(days=1)).strftime("%Y-%m-%dT23:59:00")
@@ -345,11 +337,10 @@ class TaskConfirmView(discord.ui.View):
             "subject": subject,
             "title": title,
             "deadline": dl,
-            "targetDate": target_dl,
             "submissionMethod": "Discord Bot",
             "status": "not_started",
             "priority": priority,
-            "memo": self.draft.get("memo") or "Discordより登録",
+            "memo": memo,
             "folderPath": None,
             "createdAt": datetime.now(JST).isoformat(),
             "completedAt": None
@@ -373,19 +364,11 @@ class TaskConfirmView(discord.ui.View):
             description=f"**[{subject}]** {title}",
             color=0x2ecc71
         )
-        if target_dl:
-            try:
-                td_dt = datetime.strptime(target_dl, "%Y-%m-%dT%H:%M:%S")
-                td_display = td_dt.strftime("%m月%d日(%a) %H:%M")
-            except Exception:
-                td_display = target_dl
-            embed.add_field(name="🎯 目標完了", value=f"**{td_display}** (前倒し目標)", inline=True)
-            embed.add_field(name="⏰ 最終締切", value=dl_display, inline=True)
-        else:
-            embed.add_field(name="⏰ 締切", value=dl_display, inline=True)
-
+        embed.add_field(name="⏰ 締切", value=dl_display, inline=True)
         embed.add_field(name="🏷️ 分類", value="📚 学業" if category == "academic" else "👤 自分", inline=True)
         embed.add_field(name="🔥 優先度", value=priority.upper(), inline=True)
+        if memo and memo != "Discordより登録":
+            embed.add_field(name="📝 メモ", value=memo, inline=False)
         embed.add_field(name="🌐 Webダッシュボード", value="[Task Radarを開く](https://fujitomo1123581321-byte.github.io/task-radar/)", inline=False)
         embed.set_footer(text=f"AI Brain: {self.model_used} | Task ID: {new_id} | Web同期完了")
 
@@ -420,7 +403,6 @@ intents.message_content = True
 
 class TaskRadarBot(commands.Bot):
     async def setup_hook(self):
-        # Start embedded health check server for 24/7 cloud hosts (Render/Koyeb)
         port = int(os.environ.get("PORT", 8080))
         app = web.Application()
 
@@ -452,7 +434,7 @@ async def on_ready():
     print(f"🏠 Connected Guilds: {len(bot.guilds)}")
     for g in bot.guilds:
         print(f"   - {g.name} (ID: {g.id})")
-    print(f"🧠 AI Engine: Google Gemini (24/7 Cloud + Two-Axis Deadlines)")
+    print(f"🧠 AI Engine: Google Gemini (Interactive Task Management)")
     print(f"==================================================")
     await bot.change_presence(
         activity=discord.Activity(
@@ -521,7 +503,7 @@ async def on_message(message: discord.Message):
                     category = draft.get("category", "personal")
                     priority = draft.get("priority", "medium")
                     dl = draft.get("deadline")
-                    target_dl = draft.get("targetDate")
+                    memo = draft.get("memo")
 
                     try:
                         dl_dt = datetime.strptime(dl, "%Y-%m-%dT%H:%M:%S")
@@ -534,19 +516,11 @@ async def on_message(message: discord.Message):
                         description=f"**[{subject}]** {title}",
                         color=0x3498db
                     )
-                    if target_dl:
-                        try:
-                            td_dt = datetime.strptime(target_dl, "%Y-%m-%dT%H:%M:%S")
-                            td_display = td_dt.strftime("%m月%d日(%a) %H:%M")
-                        except Exception:
-                            td_display = target_dl
-                        embed.add_field(name="🎯 目標完了", value=f"**{td_display}** (前倒し目標！)", inline=True)
-                        embed.add_field(name="⏰ 最終締切", value=dl_display, inline=True)
-                    else:
-                        embed.add_field(name="⏰ 締切日時", value=dl_display, inline=True)
-
+                    embed.add_field(name="⏰ 締切日時", value=dl_display, inline=True)
                     embed.add_field(name="🏷️ カテゴリー", value="📚 学業" if category == "academic" else "👤 自分", inline=True)
                     embed.add_field(name="🔥 優先度", value=priority.upper(), inline=True)
+                    if memo and memo != "Discordより登録":
+                        embed.add_field(name="📝 メモ", value=memo, inline=False)
                     embed.set_footer(text=f"AI Brain: {model_used} | 下のボタンを押して確定してください")
 
                     view = TaskConfirmView(user_id=user_id, draft=draft, model_used=model_used)
@@ -627,14 +601,8 @@ async def on_message(message: discord.Message):
 
                             subject = item.get("subject", "一般")
                             title = item.get("title", "無題")
-                            target_note = ""
-                            if item.get("targetDate"):
-                                try:
-                                    t_dt = datetime.strptime(item.get("targetDate"), "%Y-%m-%dT%H:%M:%S")
-                                    target_note = f" (🎯目標: {t_dt.strftime('%m/%d')})"
-                                except Exception:
-                                    pass
-                            lines.append(f"**{idx}. [{subject}] {title}{target_note}**\n   締切: {dl_formatted} ({remaining_txt})")
+                            memo_hint = f" ({item.get('memo')})" if item.get("memo") and item.get("memo") != "LETUSより自動同期" else ""
+                            lines.append(f"**{idx}. [{subject}] {title}{memo_hint}**\n   締切: {dl_formatted} ({remaining_txt})")
 
                         embed.description = "\n\n".join(lines)
                         if len(uncompleted) > 8:
@@ -677,12 +645,12 @@ async def on_message(message: discord.Message):
 async def cmd_help(ctx):
     embed = discord.Embed(
         title="🤖 Task Radar AI Bot の使い方",
-        description="自然言語で話しかけるだけで、課題の追加・完了・確認ができます！\n24時間クラウド対応 & 2軸締切管理搭載。",
+        description="自然言語で話しかけるだけで、課題の追加・完了・確認ができます！\n24時間クラウド対応。",
         color=0x3498db
     )
     embed.add_field(
         name="📝 タスクを追加する",
-        value="・「締めは土曜正午だけどできれば金曜中にレポート」\n・「明日の18時までに電磁気レポート提出」\n・ボタンでワンタップ確定！",
+        value="・「明日の18時までに電磁気レポート提出」\n・「締めは土曜正午だけどできれば金曜中に原稿覚える」\n・ボタンでワンタップ確定！",
         inline=False
     )
     embed.add_field(name="✅ タスクを完了にする", value="・「ミニテスト4終わった」\n・「原稿完了」", inline=False)
@@ -744,32 +712,29 @@ async def cmd_sync(ctx):
         await ctx.send(f"⚠️ 同期中にエラーが発生しました: {e}")
 
 # -------------------------------------------------------------
-# Main Runner
+# Main Runner (12-Factor Clean Supervisor Pattern)
 # -------------------------------------------------------------
 def main():
     token = CONFIG.get("discord_bot_token") or os.environ.get("DISCORD_BOT_TOKEN")
     if not token:
         print("Error: 'discord_bot_token' is missing in config.json or environment variables.")
         sys.exit(1)
-    
-    max_retries = 12
-    retry_delay = 10
-    for attempt in range(1, max_retries + 1):
-        try:
-            print(f"Starting Cloud-Ready Discord AI Bot (Attempt {attempt}/{max_retries})...")
-            bot.run(token)
-            break
-        except discord.errors.HTTPException as e:
-            if getattr(e, "status", None) == 429:
-                print(f"⚠️ Discord 429 Rate Limit hit. Waiting {retry_delay}s before retry...")
-                time.sleep(retry_delay)
-                retry_delay = min(retry_delay * 2, 60)
-            else:
-                print(f"HTTPException during bot run: {e}")
-                time.sleep(5)
-        except Exception as e:
-            print(f"Unexpected error in bot run: {e}")
+
+    print("Starting Cloud-Ready Discord AI Bot with 24/7 Web Listener...")
+    try:
+        bot.run(token)
+    except discord.errors.HTTPException as e:
+        if getattr(e, "status", None) == 429:
+            print("⚠️ Discord Rate Limit (429) hit. Sleeping 30s before clean container restart...")
+            time.sleep(30)
+        else:
+            print(f"HTTPException: {e}")
             time.sleep(5)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        time.sleep(5)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
