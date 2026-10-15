@@ -1,6 +1,7 @@
 """
 Discord AI Task Bot for Tokyo University of Science (TUS)
 Powered by Google Gemini (Auto-fallback: 3.8 -> 3.7 -> 3.6 -> 3.5 -> 2.5) & discord.py
+Interactive Dialog & Confirmation UI with Discord Buttons
 """
 
 import os
@@ -14,6 +15,7 @@ if sys.stderr and hasattr(sys.stderr, "reconfigure"):
 
 import json
 import re
+import time
 import asyncio
 import subprocess
 from datetime import datetime, timezone, timedelta
@@ -57,7 +59,6 @@ def git_push_sync(commit_msg="Update assignments via Discord Bot"):
     """Sync changes to GitHub in background"""
     try:
         subprocess.run(["git", "add", "assignments.json", "assignments.js"], cwd=BASE_DIR, check=True, capture_output=True)
-        # Check if there are changes
         status = subprocess.run(["git", "status", "--porcelain"], cwd=BASE_DIR, capture_output=True, text=True)
         if "assignments.json" in status.stdout or "assignments.js" in status.stdout:
             subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, check=True, capture_output=True)
@@ -68,6 +69,28 @@ def git_push_sync(commit_msg="Update assignments via Discord Bot"):
     except Exception as e:
         print(f"[Git Sync Error] {e}")
         return False
+
+# -------------------------------------------------------------
+# Session Management for Dialog Flow
+# -------------------------------------------------------------
+# user_id -> {"draft": dict, "updated_at": float}
+user_sessions = {}
+SESSION_TIMEOUT = 600  # 10 minutes
+
+def get_user_session(user_id: int):
+    now = time.time()
+    if user_id in user_sessions:
+        session = user_sessions[user_id]
+        if now - session.get("updated_at", 0) < SESSION_TIMEOUT:
+            session["updated_at"] = now
+            return session
+        else:
+            del user_sessions[user_id]
+    return None
+
+def clear_user_session(user_id: int):
+    if user_id in user_sessions:
+        del user_sessions[user_id]
 
 # -------------------------------------------------------------
 # Gemini AI Engine with Dynamic Fallback
@@ -81,7 +104,7 @@ GEMINI_MODELS = [
 ]
 
 def call_gemini(prompt: str, api_key: str):
-    """Calls Gemini API with automatic fallback through the model hierarchy."""
+    """Calls Gemini API with fast fallback through the model hierarchy."""
     payload = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
@@ -98,8 +121,10 @@ def call_gemini(prompt: str, api_key: str):
             data=payload,
             headers={"Content-Type": "application/json"}
         )
+        # Fast timeout (6s) for preview models to avoid waiting on 503s
+        timeout = 6 if "3.8" in model_name or "3.7" in model_name else 12
         try:
-            with urllib.request.urlopen(req, timeout=12) as response:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 text = res_data["candidates"][0]["content"]["parts"][0]["text"]
                 return text, model_name
@@ -117,15 +142,11 @@ def call_gemini(prompt: str, api_key: str):
 
 def parse_json_from_ai(ai_text: str):
     """Extract and parse JSON from AI response safely."""
-    # Look for code block ```json ... ```
     m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", ai_text)
     raw = m.group(1).strip() if m else ai_text.strip()
-    
-    # Try direct parse
     try:
         return json.loads(raw)
     except Exception:
-        # Try to find { ... }
         start = raw.find("{")
         end = raw.rfind("}")
         if start != -1 and end != -1:
@@ -133,14 +154,17 @@ def parse_json_from_ai(ai_text: str):
         raise ValueError("Could not parse JSON from AI output.")
 
 # -------------------------------------------------------------
-# Intent Processing Logic
+# Dialog Flow Logic (Slot Filling & Confirmation)
 # -------------------------------------------------------------
-def analyze_intent_with_gemini(user_msg: str, api_key: str):
+def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
     assignments = load_assignments()
     now_dt = datetime.now(JST)
     now_str = now_dt.strftime("%Y-%m-%d %H:%M:%S (JST, %A)")
 
-    # Build active (incomplete) tasks summary for context
+    session = get_user_session(user_id)
+    existing_draft = session.get("draft") if session else None
+
+    # Incomplete tasks list for context/completion
     uncompleted = [a for a in assignments if a.get("status") != "submitted"]
     tasks_summary = []
     for t in uncompleted:
@@ -154,48 +178,161 @@ def analyze_intent_with_gemini(user_msg: str, api_key: str):
 
     prompt = f"""現在は {now_str} です。
 ユーザーは東京理科大学の学生で、学業（LETUS）や個人のタスクを管理しています。
-ユーザーからのメッセージを自然言語解析し、以下のアクション（add, complete, list, sync, chat）のいずれかを決定してください。
+
+ユーザーからの発言を解析し、適切なアクションとスロット（情報）の充足度を判定してください。
+
+【既存の入力中ドラフト（前回の会話コンテキスト）】:
+{json.dumps(existing_draft, ensure_ascii=False, indent=2) if existing_draft else "なし（新規の発言）"}
 
 【現在の未完了タスク一覧】:
 {json.dumps(tasks_summary, ensure_ascii=False, indent=2)}
 
-【アクション定義】:
-1. "add": 新しい課題やタスクの追加
-   - 例: 「明日の18時までに電磁気のレポート提出を追加して」「金曜夜バイトシフト」「10/25にTOEIC」
-   - 必要な情報: title, subject (科目または分類), deadline (YYYY-MM-DDTHH:MM:SS), category ('academic' または 'personal'), priority ('high' | 'medium' | 'low')
-   - deadlineはユーザーの指示（明日、来週金曜など）から現在の {now_str} を基準に正確に計算してください。時間が省略されている場合は23:59:00または18:00:00等適切な時刻を設定。
-2. "complete": 既存タスクの完了
-   - 例: 「ミニテスト4終わった」「電磁気レポート完了にした」「定期券更新やったよ」
-   - 上記の【現在の未完了タスク一覧】から、該当する最も一致するタスクの 'matched_task_id' を特定してください。
-3. "list": 直近の課題一覧や残りの確認
-   - 例: 「直近の締切教えて」「残りの課題なにがある？」「今週の予定」
-4. "sync": LETUSとの手動同期依頼
-   - 例: 「LETUS同期して」「課題を最新に更新して」「sync」
-5. "chat": 質問、勉強の相談、雑談
-   - 例: 「電磁気学ってどう勉強すればいい？」「お疲れ様」
+【タスク追加（add）の対話ルール】:
+- タスク追加に必要な情報:
+  1. `title`: タスクの内容（例: レポート提出、小テスト、シフト提出など）
+  2. `subject`: 科目名または分類（例: 電磁気学、英語、アルバイト、手続きなど）。指定がなければ推定または「一般」。
+  3. `deadline`: 締切日時（YYYY-MM-DDTHH:MM:SS 形式）。
+- 判定基準 (`is_ready`):
+  - ユーザーが「締切」を指定していない場合（例: 「レポート追加したい」「英語の宿題」「タスク登録」など）:
+    `is_ready` は false にしてください。
+    `ask_question` で「締切は何月何日の何時頃でしょうか？（または『特にない』とお答えください）」など、親切に不足情報を質問してください。
+  - ユーザーが「明日18時」「今週金曜まで」「10/25」などと締切を指定している場合:
+    現在時刻 {now_str} を基準に正確に計算して `deadline` をセットし、`is_ready` は true にしてください。
+  - ユーザーが「締切はない」「いつでもいい」などと言った場合:
+    1週間後の23:59:00をセットし、`is_ready` は true にしてください。
+  - すでに既存ドラフトがある場合は、今回の最新発言から不足していた情報を補完し、ドラフトを更新・完成させてください。
 
-【出力フォーマット】:
-必ず以下のキーを持つJSONのみを出力してください（マークダウンの ```json ... ``` で囲んでください）。
+【その他のアクション】:
+- "complete": タスク完了（未完了タスク一覧から最も一致する `matched_task_id` を特定）
+- "list": 残りタスク確認
+- "sync": LETUS同期
+- "cancel": 「キャンセル」「やめる」などの中止発言
+- "chat": 質問や雑談
+
+【出力フォーマット（必ずこのJSONのみを出力してください）】:
 ```json
 {{
-  "action": "add" | "complete" | "list" | "sync" | "chat",
-  "title": "課題・タスクのタイトル（addの場合）",
-  "subject": "科目または分類（例: 電磁気学, 手続き, アルバイト等）",
-  "deadline": "YYYY-MM-DDTHH:MM:SS（addの場合）",
-  "category": "academic" | "personal",
-  "priority": "high" | "medium" | "low",
-  "matched_task_id": "一致したタスクのID（completeの場合）",
-  "matched_task_title": "一致したタスクのタイトル（completeの場合）",
-  "reply_text": "ユーザーへの分かりやすく親切な日本語メッセージ"
+  "action": "add" | "complete" | "list" | "sync" | "chat" | "cancel",
+  "is_ready": true | false,
+  "draft": {{
+    "title": "タスク名",
+    "subject": "科目または分類",
+    "deadline": "YYYY-MM-DDTHH:MM:SS または null",
+    "category": "academic" | "personal",
+    "priority": "high" | "medium" | "low",
+    "memo": "メモや詳細（任意）"
+  }},
+  "ask_question": "不足情報がある場合にユーザーに尋ねる自然な質問文",
+  "matched_task_id": "completeの場合のID",
+  "matched_task_title": "completeの場合のタイトル",
+  "reply_text": "chatやその他の場合の返信"
 }}
 ```
 
-ユーザーのメッセージ: 「{user_msg}」
+ユーザーの最新メッセージ: 「{user_msg}」
 """
     ai_raw, model_used = call_gemini(prompt, api_key)
     parsed = parse_json_from_ai(ai_raw)
     parsed["_model_used"] = model_used
     return parsed
+
+# -------------------------------------------------------------
+# Discord Interactive Confirmation View (Buttons)
+# -------------------------------------------------------------
+class TaskConfirmView(discord.ui.View):
+    def __init__(self, user_id: int, draft: dict, model_used: str, timeout: float = 300):
+        super().__init__(timeout=timeout)
+        self.user_id = user_id
+        self.draft = draft
+        self.model_used = model_used
+        self.message = None
+
+    @discord.ui.button(label="この内容で追加する", style=discord.ButtonStyle.success, emoji="✅")
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ この操作はリクエストした本人のみ実行できます。", ephemeral=True)
+            return
+
+        # Disable all buttons to prevent double-clicks
+        for child in self.children:
+            child.disabled = True
+        await interaction.response.edit_message(view=self)
+
+        loop = asyncio.get_running_loop()
+        title = self.draft.get("title") or "無題タスク"
+        subject = self.draft.get("subject") or "一般"
+        category = self.draft.get("category", "personal")
+        priority = self.draft.get("priority", "medium")
+        dl = self.draft.get("deadline")
+        if not dl:
+            dl = (datetime.now(JST) + timedelta(days=1)).strftime("%Y-%m-%dT23:59:00")
+
+        new_id = f"custom-{datetime.now(JST).strftime('%Y%m%d%H%M%S')}"
+        new_item = {
+            "id": new_id,
+            "category": category,
+            "subject": subject,
+            "title": title,
+            "deadline": dl,
+            "submissionMethod": "Discord Bot",
+            "status": "not_started",
+            "priority": priority,
+            "memo": self.draft.get("memo") or "Discordより登録",
+            "folderPath": None,
+            "createdAt": datetime.now(JST).isoformat(),
+            "completedAt": None
+        }
+
+        assignments = load_assignments()
+        assignments.append(new_item)
+        save_assignments(assignments)
+
+        # Clear session
+        clear_user_session(self.user_id)
+
+        # Push to GitHub
+        await loop.run_in_executor(None, git_push_sync, f"Add task via Discord: {title}")
+
+        # Format display deadline
+        try:
+            dl_dt = datetime.strptime(dl, "%Y-%m-%dT%H:%M:%S")
+            dl_display = dl_dt.strftime("%Y年%m月%d日 %H:%M")
+        except Exception:
+            dl_display = dl
+
+        embed = discord.Embed(
+            title="✅ タスクを正式に追加しました！",
+            description=f"**[{subject}]** {title}",
+            color=0x2ecc71
+        )
+        embed.add_field(name="⏰ 締切", value=dl_display, inline=True)
+        embed.add_field(name="🏷️ 分類", value="📚 学業" if category == "academic" else "👤 自分", inline=True)
+        embed.add_field(name="🔥 優先度", value=priority.upper(), inline=True)
+        embed.add_field(name="🌐 Webダッシュボード", value="[Task Radarを開く](https://fujitomo1123581321-byte.github.io/task-radar/)", inline=False)
+        embed.set_footer(text=f"AI Brain: {self.model_used} | Task ID: {new_id} | Web同期完了")
+
+        await interaction.followup.send(embed=embed)
+
+    @discord.ui.button(label="キャンセル", style=discord.ButtonStyle.secondary, emoji="❌")
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ この操作はリクエストした本人のみ実行できます。", ephemeral=True)
+            return
+
+        for child in self.children:
+            child.disabled = True
+        clear_user_session(self.user_id)
+        await interaction.response.edit_message(content="❌ タスクの追加をキャンセルしました。", embed=None, view=self)
+
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        clear_user_session(self.user_id)
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except Exception:
+                pass
 
 # -------------------------------------------------------------
 # Discord Bot Setup
@@ -213,7 +350,7 @@ async def on_ready():
     print(f"🏠 Connected Guilds: {len(bot.guilds)}")
     for g in bot.guilds:
         print(f"   - {g.name} (ID: {g.id})")
-    print(f"🧠 AI Engine: Google Gemini (Active Model: {GEMINI_MODELS[0]} with Fallbacks)")
+    print(f"🧠 AI Engine: Google Gemini (Interactive Slot-Filling & Buttons Active)")
     print(f"==================================================")
     await bot.change_presence(
         activity=discord.Activity(
@@ -224,14 +361,9 @@ async def on_ready():
 
 @bot.event
 async def on_message(message: discord.Message):
-    # Ignore bot's own messages
     if message.author == bot.user:
         return
 
-    # Check if bot should respond:
-    # 1. Mentioned (@bot)
-    # 2. Direct Message (DM)
-    # 3. Message in a channel that starts with '!' command
     is_mentioned = bot.user in message.mentions
     is_dm = isinstance(message.channel, discord.DMChannel)
     is_command = message.content.startswith("!")
@@ -246,77 +378,87 @@ async def on_message(message: discord.Message):
         await bot.process_commands(message)
         return
 
-    # If mentioned, in DM, or in dedicated task channel, handle with natural language AI
-    if is_mentioned or is_dm or is_task_channel:
+    # Check for active session: if user has a pending draft in this channel/DM, handle it
+    user_id = message.author.id
+    has_active_session = (get_user_session(user_id) is not None)
+
+    # Respond if mentioned, in DM, in task channel, or continuing an active session
+    if is_mentioned or is_dm or is_task_channel or has_active_session:
         clean_content = message.content.replace(f"<@{bot.user.id}>", "").strip()
         if not clean_content:
             await message.reply("👋 何か用事かな？「〜のレポート追加して」「〜終わった」「残りの課題教えて」など何でも話しかけてね！")
             return
 
+        # Check for explicit cancellation
+        if clean_content.lower() in ["キャンセル", "cancel", "やめる", "とりけし", "取り消し"]:
+            if has_active_session:
+                clear_user_session(user_id)
+                await message.reply("❌ タスクの追加をキャンセルしました。")
+                return
+
         async with message.channel.typing():
             try:
                 loop = asyncio.get_running_loop()
-                # Run Gemini parsing in thread pool to avoid blocking Discord heartbeat
-                res = await loop.run_in_executor(None, analyze_intent_with_gemini, clean_content, CONFIG["gemini_api_key"])
+                res = await loop.run_in_executor(None, analyze_dialog_with_gemini, user_id, clean_content, CONFIG["gemini_api_key"])
                 action = res.get("action", "chat")
                 model_used = res.get("_model_used", "Gemini")
 
                 # Handle ACTION: ADD
                 if action == "add":
-                    title = res.get("title") or clean_content
-                    subject = res.get("subject") or "一般"
-                    category = res.get("category", "personal")
-                    priority = res.get("priority", "medium")
-                    dl = res.get("deadline")
-                    
-                    if not dl:
-                        # Default to tomorrow 23:59:00 if not deduced
-                        dl = (datetime.now(JST) + timedelta(days=1)).strftime("%Y-%m-%dT23:59:00")
+                    is_ready = res.get("is_ready", False)
+                    draft = res.get("draft") or {}
 
-                    new_id = f"custom-{datetime.now(JST).strftime('%Y%m%d%H%M%S')}"
-                    new_item = {
-                        "id": new_id,
-                        "category": category,
-                        "subject": subject,
-                        "title": title,
-                        "deadline": dl,
-                        "submissionMethod": "Discord Bot",
-                        "status": "not_started",
-                        "priority": priority,
-                        "memo": f"Discordより登録: {clean_content}",
-                        "folderPath": None,
-                        "createdAt": datetime.now(JST).isoformat(),
-                        "completedAt": None
+                    # Case 1: Information is missing -> Ask user for missing details
+                    if not is_ready:
+                        user_sessions[user_id] = {
+                            "draft": draft,
+                            "updated_at": time.time()
+                        }
+                        question = res.get("ask_question") or "締切は何月何日の何時頃でしょうか？（または『特にない』とお答えください）"
+                        embed = discord.Embed(
+                            title="📝 情報を教えてください",
+                            description=question,
+                            color=0x3498db
+                        )
+                        embed.set_footer(text="💡 キャンセルしたい場合は「キャンセル」と返信してください")
+                        await message.reply(embed=embed)
+                        return
+
+                    # Case 2: Information is ready -> Present Confirmation Card with Buttons!
+                    user_sessions[user_id] = {
+                        "draft": draft,
+                        "updated_at": time.time()
                     }
 
-                    assignments = load_assignments()
-                    assignments.append(new_item)
-                    save_assignments(assignments)
+                    title = draft.get("title") or "無題タスク"
+                    subject = draft.get("subject") or "一般"
+                    category = draft.get("category", "personal")
+                    priority = draft.get("priority", "medium")
+                    dl = draft.get("deadline")
                     
-                    # Push to GitHub
-                    await loop.run_in_executor(None, git_push_sync, f"Add task via Discord: {title}")
-
-                    # Format Deadline string nicely
                     try:
                         dl_dt = datetime.strptime(dl, "%Y-%m-%dT%H:%M:%S")
-                        dl_display = dl_dt.strftime("%Y年%m月%d日 %H:%M")
+                        dl_display = dl_dt.strftime("%Y年%m月%d日(%a) %H:%M")
                     except Exception:
-                        dl_display = dl
+                        dl_display = dl or "未定"
 
                     embed = discord.Embed(
-                        title="✅ タスクを追加しました！",
+                        title="📋 【登録確認】以下の内容で追加しますか？",
                         description=f"**[{subject}]** {title}",
-                        color=0x2ecc71
+                        color=0x3498db
                     )
-                    embed.add_field(name="⏰ 締切", value=dl_display, inline=True)
-                    embed.add_field(name="🏷️ 分類", value="📚 学業" if category == "academic" else "👤 自分", inline=True)
+                    embed.add_field(name="⏰ 締切日時", value=dl_display, inline=True)
+                    embed.add_field(name="🏷️ カテゴリー", value="📚 学業" if category == "academic" else "👤 自分", inline=True)
                     embed.add_field(name="🔥 優先度", value=priority.upper(), inline=True)
-                    embed.add_field(name="🌐 Webダッシュボード", value="[Task Radarを開く](https://fujitomo1123581321-byte.github.io/task-radar/)", inline=False)
-                    embed.set_footer(text=f"AI Brain: {model_used} | Task ID: {new_id}")
-                    await message.reply(embed=embed)
+                    embed.set_footer(text=f"AI Brain: {model_used} | 下のボタンを押して確定してください")
+
+                    view = TaskConfirmView(user_id=user_id, draft=draft, model_used=model_used)
+                    sent_msg = await message.reply(embed=embed, view=view)
+                    view.message = sent_msg
 
                 # Handle ACTION: COMPLETE
                 elif action == "complete":
+                    clear_user_session(user_id)
                     matched_id = res.get("matched_task_id")
                     assignments = load_assignments()
                     target = None
@@ -327,7 +469,6 @@ async def on_message(message: discord.Message):
                                 target = a
                                 break
 
-                    # If not matched by ID, try title fuzzy search
                     if not target:
                         query = res.get("matched_task_title") or clean_content
                         for a in assignments:
@@ -349,14 +490,13 @@ async def on_message(message: discord.Message):
                         embed.set_footer(text=f"AI Brain: {model_used} | Webダッシュボードに反映済み")
                         await message.reply(embed=embed)
                     else:
-                        await message.reply(f"🤔 完了にしたいタスクが見つかりませんでした。\n「未完了の課題を教えて」と聞いて名前を確認してみてください！")
+                        await message.reply("🤔 完了にしたいタスクが見つかりませんでした。\n「未完了の課題を教えて」と聞いて名前を確認してみてください！")
 
                 # Handle ACTION: LIST
                 elif action == "list":
                     assignments = load_assignments()
                     uncompleted = [a for a in assignments if a.get("status") != "submitted"]
                     
-                    # Sort by deadline
                     def parse_dl(item):
                         try:
                             return datetime.strptime(item.get("deadline", "9999-12-31T23:59:00"), "%Y-%m-%dT%H:%M:%S")
@@ -415,6 +555,11 @@ async def on_message(message: discord.Message):
                     except Exception as e:
                         await message.reply(f"⚠️ 同期中にエラーが発生しました: {e}")
 
+                # Handle ACTION: CANCEL
+                elif action == "cancel":
+                    clear_user_session(user_id)
+                    await message.reply("❌ タスクの追加をキャンセルしました。")
+
                 # Handle ACTION: CHAT
                 else:
                     reply_text = res.get("reply_text") or "承知いたしました！"
@@ -436,22 +581,22 @@ async def on_message(message: discord.Message):
 async def cmd_help(ctx):
     embed = discord.Embed(
         title="🤖 Task Radar AI Bot の使い方",
-        description="自然言語で話しかけるだけで、課題の追加・完了・確認ができます！\nメンション（`@fujitomo bot ai`）またはDMで話しかけてください。",
+        description="自然言語で話しかけるだけで、課題の追加・完了・確認ができます！\nボタン操作や対話による確認機能つきです。",
         color=0x3498db
     )
     embed.add_field(
-        name="📝 タスクを追加する",
-        value="・「明日の18時までに電磁気のレポート提出を追加して」\n・「10/25にTOEICテスト」\n・「金曜夜にバイトシフト提出」",
+        name="📝 タスクを追加する（対話型）",
+        value="・「レポート追加したい」（➔ AIが締切を聞いてくれます）\n・「明日の18時までに電磁気レポート提出」（➔ 確認ボタンが出ます）\n・確認ボタン【✅ この内容で追加する】を押せば即登録！",
         inline=False
     )
     embed.add_field(
         name="✅ タスクを完了にする",
-        value="・「ミニテスト4終わったよ」\n・「電磁気レポート完了」\n・「定期券の更新やった」",
+        value="・「ミニテスト4終わったよ」\n・「電磁気レポート完了」",
         inline=False
     )
     embed.add_field(
         name="📋 課題を確認する",
-        value="・「直近の締切教えて」\n・「残りの課題何がある？」\n・「!list」コマンドでもOK",
+        value="・「直近の締切教えて」\n・「残りの課題何がある？」\n・「!list」",
         inline=False
     )
     embed.add_field(
@@ -469,14 +614,6 @@ async def cmd_help(ctx):
 
 @bot.command(name="list")
 async def cmd_list(ctx):
-    # Delegate to the list flow
-    class FakeMsg:
-        author = ctx.author
-        content = "!list"
-        mentions = [bot.user]
-        channel = ctx.channel
-        reply = ctx.send
-    # Reuse list logic simply
     assignments = load_assignments()
     uncompleted = [a for a in assignments if a.get("status") != "submitted"]
     now_dt = datetime.now(JST).replace(tzinfo=None)
@@ -536,7 +673,7 @@ def main():
         print("Error: 'discord_bot_token' is missing in config.json")
         sys.exit(1)
     
-    print("Starting Discord AI Bot...")
+    print("Starting Discord AI Bot with Slot-Filling & Buttons...")
     bot.run(token)
 
 if __name__ == "__main__":
