@@ -170,12 +170,12 @@
     "title": "ミニテスト4 (提出期限10/14)",
     "deadline": "2026-10-14T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-14T20:32:53.298827",
-    "completedAt": null,
+    "completedAt": "2026-10-16T00:42:26.000164",
     "moodleUid": "643295@letus.ed.tus.ac.jp"
   },
   {
