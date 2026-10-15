@@ -752,8 +752,24 @@ def main():
         print("Error: 'discord_bot_token' is missing in config.json or environment variables.")
         sys.exit(1)
     
-    print("Starting Cloud-Ready Discord AI Bot with 24/7 Web Listener...")
-    bot.run(token)
+    max_retries = 12
+    retry_delay = 10
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"Starting Cloud-Ready Discord AI Bot (Attempt {attempt}/{max_retries})...")
+            bot.run(token)
+            break
+        except discord.errors.HTTPException as e:
+            if getattr(e, "status", None) == 429:
+                print(f"⚠️ Discord 429 Rate Limit hit. Waiting {retry_delay}s before retry...")
+                time.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, 60)
+            else:
+                print(f"HTTPException during bot run: {e}")
+                time.sleep(5)
+        except Exception as e:
+            print(f"Unexpected error in bot run: {e}")
+            time.sleep(5)
 
 if __name__ == "__main__":
     main()
