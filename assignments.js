@@ -522,5 +522,19 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-15T14:02:39.003964",
     "completedAt": null,
     "moodleUid": "575543@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "custom-20261016011250",
+    "category": "personal",
+    "subject": "みらいけん",
+    "title": "みらいけんの原稿を覚える",
+    "deadline": "2026-10-18T23:59:00",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "Discordより登録: みらいけんの原稿を覚えることをタスクに追加したいんだけど",
+    "folderPath": null,
+    "createdAt": "2026-10-16T01:12:50.213572+09:00",
+    "completedAt": null
   }
 ];
