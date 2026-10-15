@@ -119,6 +119,13 @@
           </svg>
         </button>
 
+        <!-- MANUAL REFRESH / SYNC BUTTON -->
+        <button onclick="manualSyncNow()" class="p-2 text-indigo-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition shrink-0" title="最新データに更新">
+          <svg id="syncSpinIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+        </button>
+
         <!-- Theme toggle -->
         <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/80 transition shrink-0" title="テーマ切り替え">
           <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -643,6 +650,11 @@
       </div>
 
       <div class="grid grid-cols-1 gap-2 text-xs">
+        <button onclick="closeMobileMenuModal(); manualSyncNow()" class="p-3 bg-indigo-900/60 hover:bg-indigo-700 text-indigo-200 hover:text-white rounded-xl border border-indigo-700/80 flex items-center gap-2.5 font-semibold text-left">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span>🔄 最新データに強制更新（Discord・LETUS同期）</span>
+        </button>
+
         <a href="https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming" target="_blank" rel="noopener noreferrer" class="p-3 bg-slate-900/80 hover:bg-slate-700 text-indigo-300 hover:text-white rounded-xl border border-slate-700/80 flex items-center gap-2.5 font-semibold">
           <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
           <span>LETUS 今後のイベントを開く</span>
@@ -755,46 +767,58 @@
       renderSubjectFilter();
       renderAssignments();
 
-      // Check if server has updated assignments
-      refreshFromServer();
+      // Check if server has updated assignments immediately
+      refreshFromServer(false);
+      setInterval(() => refreshFromServer(false), 20000);
+    }
+
+    // --- MANUAL SYNC TRIGGER ---
+    async function manualSyncNow() {
+      const icon = document.getElementById('syncSpinIcon');
+      if (icon) icon.classList.add('animate-spin');
+      showToast('🔄 最新データを同期中...');
+      const ok = await refreshFromServer(true);
+      if (icon) icon.classList.remove('animate-spin');
+      if (!ok) {
+        showToast('⚠️ 同期に失敗しました。時間をおいて再試行してください');
+      }
     }
 
     // --- SERVER AUTO REFRESH ---
-    async function refreshFromServer() {
-      if (window.location.protocol.startsWith('http')) {
+    async function refreshFromServer(showToastNotice = false) {
+      // Prioritize raw.githubusercontent.com for INSTANT (0-sec lag) updates after Discord bot push
+      const endpoints = [
+        'https://raw.githubusercontent.com/fujitomo1123581321-byte/task-radar/main/assignments.json?_t=' + Date.now(),
+        'assignments.json?_t=' + Date.now()
+      ];
+
+      for (const endpoint of endpoints) {
         try {
-          const res = await fetch('assignments.json?_t=' + Date.now());
+          const res = await fetch(endpoint, { cache: 'no-store' });
           if (res.ok) {
             const serverData = await res.json();
             if (Array.isArray(serverData) && serverData.length > 0) {
-              const localMap = new Map();
-              assignments.forEach(a => localMap.set(a.id || a.title, a));
-              
-              const merged = serverData.map(s => {
-                const loc = localMap.get(s.id || s.title);
-                if (loc && loc.isCompleted) {
-                  return { ...s, isCompleted: true, completedAt: loc.completedAt };
-                }
-                return s;
-              });
-
+              assignments = serverData;
               assignments.forEach(a => {
-                if (a.isCustom && !merged.some(m => m.id === a.id)) {
-                  merged.push(a);
+                if (!a.category) {
+                  a.category = (a.subject === '手続き' || a.subject === '生活' || a.subject === '個人') ? 'personal' : 'academic';
                 }
               });
-
-              assignments = merged;
               localStorage.setItem('deadline_radar_assignments', JSON.stringify(assignments));
               updateCategoryBadges();
               renderSubjectFilter();
               renderAssignments();
+              if (showToastNotice) {
+                showToast(`✅ 最新データを同期しました（全${assignments.length}件）`);
+              }
+              return true;
             }
           }
         } catch (e) {
-          console.log('Server refresh skipped:', e);
+          console.warn('Sync attempt failed for:', endpoint, e);
         }
       }
+      return false;
     }
 
     // --- MOBILE PAIRING & MODAL ---
