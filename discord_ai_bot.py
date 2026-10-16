@@ -694,6 +694,16 @@ import http.server
 import threading
 
 class HealthHandler(http.server.BaseHTTPRequestHandler):
+    def _send_cors(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._send_cors()
+        self.end_headers()
+
     def do_GET(self):
         assignments = load_assignments()
         data = {
@@ -707,8 +717,70 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(resp)))
+        self._send_cors()
         self.end_headers()
         self.wfile.write(resp)
+
+    def do_POST(self):
+        if self.path in ("/api/task-status", "/api/task-status/"):
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len)
+                payload = json.loads(body.decode("utf-8"))
+
+                task_id = payload.get("id")
+                new_status = payload.get("status")
+
+                if not task_id or not new_status:
+                    self.send_response(400)
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Missing id or status"}')
+                    return
+
+                assignments = load_assignments()
+                target = None
+                for a in assignments:
+                    if str(a.get("id")) == str(task_id):
+                        a["status"] = new_status
+                        if new_status == "submitted":
+                            a["completedAt"] = datetime.now(JST).isoformat()
+                        elif new_status == "not_started":
+                            a["completedAt"] = None
+                        target = a
+                        break
+
+                if target:
+                    save_assignments(assignments)
+                    threading.Thread(
+                        target=git_push_sync,
+                        args=(f"Update task '{target.get('title')}' status to {new_status} via Web",),
+                        daemon=True
+                    ).start()
+
+                    resp = json.dumps({"status": "ok", "id": task_id, "new_status": new_status, "title": target.get("title")}, ensure_ascii=False).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Content-Length", str(len(resp)))
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(resp)
+                    print(f"🌐 [Web Sync API] Task '{target.get('title')}' status updated to {new_status}")
+                else:
+                    self.send_response(404)
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Task not found"}')
+            except Exception as e:
+                self.send_response(500)
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+        else:
+            self.send_response(404)
+            self._send_cors()
+            self.end_headers()
+            self.wfile.write(b'{"error": "Endpoint not found"}')
 
     def log_message(self, format, *args):
         # Suppress noisy health ping access logs

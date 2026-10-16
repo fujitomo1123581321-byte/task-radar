@@ -784,7 +784,7 @@
       }
     }
 
-    // --- SERVER AUTO REFRESH ---
+    // --- SERVER AUTO REFRESH (with Smart Local Merge) ---
     async function refreshFromServer(showToastNotice = false) {
       // Prioritize raw.githubusercontent.com for INSTANT (0-sec lag) updates after Discord bot push
       const endpoints = [
@@ -798,7 +798,34 @@
           if (res.ok) {
             const serverData = await res.json();
             if (Array.isArray(serverData) && serverData.length > 0) {
-              assignments = serverData;
+              // Smart Merge: Preserve locally completed or modified status so server polling never reverts user actions
+              const localSaved = localStorage.getItem('deadline_radar_assignments');
+              let localMap = new Map();
+              if (localSaved) {
+                try {
+                  const localArr = JSON.parse(localSaved);
+                  if (Array.isArray(localArr)) {
+                    localMap = new Map(localArr.map(x => [String(x.id), x]));
+                  }
+                } catch (_) {}
+              }
+
+              const merged = serverData.map(serverItem => {
+                const localItem = localMap.get(String(serverItem.id));
+                if (localItem) {
+                  // If locally submitted, NEVER let older server data revert it back to unsubmitted!
+                  if (localItem.status === 'submitted' && serverItem.status !== 'submitted') {
+                    return { ...serverItem, status: 'submitted', completedAt: localItem.completedAt || new Date().toISOString() };
+                  }
+                  // If locally in_progress, keep it
+                  if (localItem.status === 'in_progress' && serverItem.status === 'not_started') {
+                    return { ...serverItem, status: 'in_progress' };
+                  }
+                }
+                return serverItem;
+              });
+
+              assignments = merged;
               assignments.forEach(a => {
                 if (!a.category) {
                   a.category = (a.subject === '手続き' || a.subject === '生活' || a.subject === '個人') ? 'personal' : 'academic';
@@ -1253,6 +1280,24 @@
       }).join('');
     }
 
+    // --- CLOUD SYNC HELPER ---
+    const CLOUD_SYNC_URL = 'https://task-radar-us.onrender.com/api/task-status';
+
+    function syncStatusToCloud(taskId, status) {
+      if (!taskId) return;
+      fetch(CLOUD_SYNC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: taskId, status: status })
+      }).then(res => {
+        if (res.ok) {
+          console.log(`[Cloud Task Sync] Successfully synced task ${taskId} -> ${status}`);
+        }
+      }).catch(err => {
+        console.warn('[Cloud Task Sync Notice] Cloud server ping skipped:', err);
+      });
+    }
+
     // --- ACTIONS ---
     function cycleStatus(id) {
       const a = assignments.find(x => x.id === id);
@@ -1272,6 +1317,7 @@
       }
 
       saveAssignments();
+      syncStatusToCloud(a.id, a.status);
     }
 
     function deleteAssignment(id) {
@@ -1507,6 +1553,9 @@
       }
 
       saveAssignments();
+      if (id) {
+        syncStatusToCloud(id, status);
+      }
       closeModal();
     }
 
