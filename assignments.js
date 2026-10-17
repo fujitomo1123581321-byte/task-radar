@@ -558,12 +558,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "第6回小テスト",
     "deadline": "2026-10-23T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-17T07:15:28.665810",
-    "completedAt": null,
+    "completedAt": "2026-10-17T21:45:05.452118+09:00",
     "moodleUid": "638961@letus.ed.tus.ac.jp"
   }
 ];
