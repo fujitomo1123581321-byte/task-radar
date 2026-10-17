@@ -550,5 +550,20 @@ window.INITIAL_ASSIGNMENTS = [
     "folderPath": null,
     "createdAt": "2026-10-16T01:26:47.910161+09:00",
     "completedAt": null
+  },
+  {
+    "id": "letus-20261017071528-0",
+    "category": "academic",
+    "subject": "11データサイエンス・ＡＩ応用基礎",
+    "title": "第6回小テスト",
+    "deadline": "2026-10-23T23:59:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "high",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-17T07:15:28.665810",
+    "completedAt": null,
+    "moodleUid": "638961@letus.ed.tus.ac.jp"
   }
 ];
