@@ -170,8 +170,9 @@ def clear_user_session(user_id: int):
 # -------------------------------------------------------------
 GEMINI_MODELS = [
     "gemini-flash-lite-latest",  # 常に最新の超高速Flash-Lite（最優先・即答特化）
-    "gemini-2.5-flash-lite",     # 安定版2.5 Flash-Lite
+    "gemini-3.5-flash-lite",     # 最新3.5世代の超高速Flash-Lite ⚡️
     "gemini-3.1-flash-lite",     # 3.1 Flash-Lite
+    "gemini-2.5-flash-lite",     # 安定版2.5 Flash-Lite
     "gemini-flash-latest",       # 最新Flash標準
     "gemini-2.5-flash"           # 2.5 Flash標準
 ]
