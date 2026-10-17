@@ -419,21 +419,6 @@
     "moodleUid": "577523@letus.ed.tus.ac.jp"
   },
   {
-    "id": "letus-20261015042535-0",
-    "category": "academic",
-    "subject": "08実験",
-    "title": "実験④(R) 前組",
-    "deadline": "2026-10-16T23:59:00",
-    "submissionMethod": "LETUS",
-    "status": "not_started",
-    "priority": "medium",
-    "memo": "LETUSより自動同期",
-    "folderPath": null,
-    "createdAt": "2026-10-15T04:25:35.208285",
-    "completedAt": null,
-    "moodleUid": "577521@letus.ed.tus.ac.jp"
-  },
-  {
     "id": "letus-20261015042535-1",
     "category": "academic",
     "subject": "08実験",
