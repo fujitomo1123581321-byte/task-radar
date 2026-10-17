@@ -169,11 +169,11 @@ def clear_user_session(user_id: int):
 # Gemini AI Engine with Dynamic Fallback
 # -------------------------------------------------------------
 GEMINI_MODELS = [
-    "gemini-3.8-flash",
-    "gemini-3.7-flash",
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
-    "gemini-2.5-flash"
+    "gemini-flash-lite-latest",  # 常に最新の超高速Flash-Lite（最優先・即答特化）
+    "gemini-2.5-flash-lite",     # 安定版2.5 Flash-Lite
+    "gemini-3.1-flash-lite",     # 3.1 Flash-Lite
+    "gemini-flash-latest",       # 最新Flash標準
+    "gemini-2.5-flash"           # 2.5 Flash標準
 ]
 
 def call_gemini(prompt: str, api_key: str):
@@ -189,7 +189,7 @@ def call_gemini(prompt: str, api_key: str):
     for model_name in GEMINI_MODELS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-        timeout = 6 if "3.8" in model_name or "3.7" in model_name else 12
+        timeout = 5 if "lite" in model_name else 8
         try:
             with urllib.request.urlopen(req, timeout=timeout) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
