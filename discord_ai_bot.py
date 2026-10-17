@@ -776,6 +776,79 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                 self._send_cors()
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+        elif self.path in ("/api/task-delete", "/api/task-delete/"):
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len)
+                payload = json.loads(body.decode("utf-8"))
+                task_id = payload.get("id")
+
+                assignments = load_assignments()
+                new_assignments = [a for a in assignments if str(a.get("id")) != str(task_id)]
+                save_assignments(new_assignments)
+
+                title = payload.get("title", task_id)
+                threading.Thread(
+                    target=git_push_sync,
+                    args=(f"Delete task '{title}' via Web",),
+                    daemon=True
+                ).start()
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(b'{"status": "ok", "action": "deleted"}')
+                print(f"🌐 [Web Sync API] Task '{task_id}' permanently deleted via Web")
+            except Exception as e:
+                self.send_response(500)
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+        elif self.path in ("/api/task-ignore", "/api/task-ignore/"):
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len)
+                payload = json.loads(body.decode("utf-8"))
+                title = payload.get("title")
+                task_id = payload.get("id")
+
+                assignments = load_assignments()
+                new_assignments = [a for a in assignments if a.get("title") != title and str(a.get("id")) != str(task_id)]
+                save_assignments(new_assignments)
+
+                # Add to local config.json ignored_titles if present
+                cfg = load_config()
+                if "ignored_titles" not in cfg:
+                    cfg["ignored_titles"] = []
+                if title and title not in cfg["ignored_titles"]:
+                    cfg["ignored_titles"].append(title)
+                    if os.path.exists(CONFIG_PATH):
+                        try:
+                            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+                                json.dump(cfg, f, ensure_ascii=False, indent=2)
+                        except Exception:
+                            pass
+
+                threading.Thread(
+                    target=git_push_sync,
+                    args=(f"Ignore task '{title}' via Web",),
+                    daemon=True
+                ).start()
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(b'{"status": "ok", "action": "ignored"}')
+                print(f"🌐 [Web Sync API] Task '{title}' permanently ignored via Web")
+            except Exception as e:
+                self.send_response(500)
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
         else:
             self.send_response(404)
             self._send_cors()

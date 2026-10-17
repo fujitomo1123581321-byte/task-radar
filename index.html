@@ -742,6 +742,26 @@
     }
 
     // --- INITIALIZATION ---
+    // --- FILTER HELPER FOR IGNORED & DELETED TASKS ---
+    function applyIgnoreAndDeletedFilters(items) {
+      if (!Array.isArray(items)) return [];
+      let ignoredTitles = [];
+      try {
+        ignoredTitles = JSON.parse(localStorage.getItem('deadline_radar_ignored') || '[]');
+      } catch (_) {}
+      let deletedIds = [];
+      try {
+        deletedIds = JSON.parse(localStorage.getItem('deadline_radar_deleted_ids') || '[]');
+      } catch (_) {}
+
+      return items.filter(a => {
+        if (a.id && deletedIds.includes(String(a.id))) return false;
+        if (a.title && ignoredTitles.includes(a.title)) return false;
+        return true;
+      });
+    }
+
+    // --- INITIALIZATION ---
     function init() {
       const saved = localStorage.getItem('deadline_radar_assignments');
       if (saved) {
@@ -753,6 +773,9 @@
       } else if (window.INITIAL_ASSIGNMENTS) {
         assignments = [...window.INITIAL_ASSIGNMENTS];
       }
+
+      // Filter out ignored and deleted tasks from the start
+      assignments = applyIgnoreAndDeletedFilters(assignments);
 
       // Ensure every assignment has a category
       assignments.forEach(a => {
@@ -784,7 +807,7 @@
       }
     }
 
-    // --- SERVER AUTO REFRESH (with Smart Local Merge) ---
+    // --- SERVER AUTO REFRESH (with Smart Local Merge & Ignore Filters) ---
     async function refreshFromServer(showToastNotice = false) {
       // Prioritize raw.githubusercontent.com for INSTANT (0-sec lag) updates after Discord bot push
       const endpoints = [
@@ -798,7 +821,10 @@
           if (res.ok) {
             const serverData = await res.json();
             if (Array.isArray(serverData) && serverData.length > 0) {
-              // Smart Merge: Preserve locally completed or modified status so server polling never reverts user actions
+              // 1. Strictly filter out tasks that user ignored or deleted locally
+              const filteredServerData = applyIgnoreAndDeletedFilters(serverData);
+
+              // 2. Smart Merge: Preserve locally completed or modified status so server polling never reverts user actions
               const localSaved = localStorage.getItem('deadline_radar_assignments');
               let localMap = new Map();
               if (localSaved) {
@@ -810,7 +836,7 @@
                 } catch (_) {}
               }
 
-              const merged = serverData.map(serverItem => {
+              const merged = filteredServerData.map(serverItem => {
                 const localItem = localMap.get(String(serverItem.id));
                 if (localItem) {
                   // If locally submitted, NEVER let older server data revert it back to unsubmitted!
@@ -1281,11 +1307,11 @@
     }
 
     // --- CLOUD SYNC HELPER ---
-    const CLOUD_SYNC_URL = 'https://task-radar-us.onrender.com/api/task-status';
+    const CLOUD_SYNC_BASE = 'https://task-radar-us.onrender.com';
 
     function syncStatusToCloud(taskId, status) {
       if (!taskId) return;
-      fetch(CLOUD_SYNC_URL, {
+      fetch(`${CLOUD_SYNC_BASE}/api/task-status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: taskId, status: status })
@@ -1296,6 +1322,24 @@
       }).catch(err => {
         console.warn('[Cloud Task Sync Notice] Cloud server ping skipped:', err);
       });
+    }
+
+    function syncDeleteToCloud(taskId, title) {
+      if (!taskId) return;
+      fetch(`${CLOUD_SYNC_BASE}/api/task-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: taskId, title: title })
+      }).catch(() => {});
+    }
+
+    function syncIgnoreToCloud(title, taskId) {
+      if (!title) return;
+      fetch(`${CLOUD_SYNC_BASE}/api/task-ignore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title, id: taskId })
+      }).catch(() => {});
     }
 
     // --- ACTIONS ---
@@ -1324,8 +1368,17 @@
       const a = assignments.find(x => x.id === id);
       if (!a) return;
       if (confirm(`「${a.title}」を削除してもよろしいですか？`)) {
+        // Permanently record into deleted IDs so server polling never resurrects it
+        let deletedIds = [];
+        try {
+          deletedIds = JSON.parse(localStorage.getItem('deadline_radar_deleted_ids') || '[]');
+        } catch (_) {}
+        if (!deletedIds.includes(String(id))) deletedIds.push(String(id));
+        localStorage.setItem('deadline_radar_deleted_ids', JSON.stringify(deletedIds));
+
         assignments = assignments.filter(x => x.id !== id);
         saveAssignments();
+        syncDeleteToCloud(id, a.title);
         showToast('削除しました');
       }
     }
@@ -1334,21 +1387,25 @@
       const a = assignments.find(x => x.id === id);
       if (!a) return;
       if (confirm(`「${a.title}」を自分に関係ない課題として除外しますか？\n（今後自動同期されても復活しません）`)) {
-        let ignored = JSON.parse(localStorage.getItem('deadline_radar_ignored') || '[]');
+        // Record into ignored titles
+        let ignored = [];
+        try {
+          ignored = JSON.parse(localStorage.getItem('deadline_radar_ignored') || '[]');
+        } catch (_) {}
         if (!ignored.includes(a.title)) ignored.push(a.title);
         localStorage.setItem('deadline_radar_ignored', JSON.stringify(ignored));
 
+        // Also permanently record into deleted IDs
+        let deletedIds = [];
+        try {
+          deletedIds = JSON.parse(localStorage.getItem('deadline_radar_deleted_ids') || '[]');
+        } catch (_) {}
+        if (!deletedIds.includes(String(id))) deletedIds.push(String(id));
+        localStorage.setItem('deadline_radar_deleted_ids', JSON.stringify(deletedIds));
+
         assignments = assignments.filter(x => x.id !== id);
         saveAssignments();
-
-        if (window.location.protocol.startsWith('http')) {
-          fetch('/api/ignore', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: a.title })
-          }).catch(() => {});
-        }
-
+        syncIgnoreToCloud(a.title, id);
         showToast(`🚫「${a.title}」を除外しました`);
       }
     }
