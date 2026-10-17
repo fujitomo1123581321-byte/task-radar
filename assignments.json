@@ -185,12 +185,12 @@
     "title": "実験④(D直前) 後組",
     "deadline": "2026-10-16T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-14T20:32:53.298916",
-    "completedAt": null,
+    "completedAt": "2026-10-17T21:35:40.321809+09:00",
     "moodleUid": "577531@letus.ed.tus.ac.jp"
   },
   {
