@@ -202,8 +202,10 @@ def fetch_and_sync():
         # Check if already in list
         found = False
         for item in existing:
-            # Match by UID or exact title
-            if (uid and item.get("moodleUid") == uid) or (item.get("title") == title and item.get("category") == "academic"):
+            # Match by UID or normalized title
+            item_uid = item.get("moodleUid", "").strip() if item.get("moodleUid") else ""
+            item_title = item.get("title", "").strip() if item.get("title") else ""
+            if (uid and item_uid == uid) or (item_title == title.strip() and item.get("category") == "academic"):
                 found = True
                 # If subject was generic "学業", upgrade it
                 if item.get("subject") == "学業" and subject != "学業":

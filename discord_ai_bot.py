@@ -94,8 +94,11 @@ def sync_to_github_via_api(path: str, content_bytes: bytes, commit_msg: str, tok
         with urllib.request.urlopen(req, timeout=8) as res:
             data = json.loads(res.read().decode("utf-8"))
             sha = data.get("sha")
-    except Exception:
-        pass
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            print(f"[GitHub API GET Warning] {path} HTTP {e.code}: {e.read().decode('utf-8', errors='ignore')[:100]}")
+    except Exception as e:
+        print(f"[GitHub API GET Warning] {path} error: {e}")
 
     payload = {
         "message": commit_msg,
@@ -110,8 +113,15 @@ def sync_to_github_via_api(path: str, content_bytes: bytes, commit_msg: str, tok
         headers=headers,
         method="PUT"
     )
-    with urllib.request.urlopen(put_req, timeout=10) as res:
-        return res.status in (200, 201)
+    try:
+        with urllib.request.urlopen(put_req, timeout=10) as res:
+            return res.status in (200, 201)
+    except urllib.error.HTTPError as e:
+        print(f"[GitHub API PUT Error] {path} HTTP {e.code}: {e.read().decode('utf-8', errors='ignore')[:100]}")
+        return False
+    except Exception as e:
+        print(f"[GitHub API PUT Error] {path} error: {e}")
+        return False
 
 def git_push_sync(commit_msg="Update assignments via Discord Bot"):
     """Dual-mode sync: GitHub API (Cloud) or Git Subprocess (Local)"""
@@ -125,6 +135,7 @@ def git_push_sync(commit_msg="Update assignments via Discord Bot"):
                 js_bytes = f.read()
 
             sync_to_github_via_api("assignments.json", json_bytes, commit_msg, gh_token)
+            time.sleep(0.5)
             sync_to_github_via_api("assignments.js", js_bytes, commit_msg, gh_token)
             print(f"[Cloud Git Sync] Pushed to GitHub via API: {commit_msg}")
             return True
@@ -731,6 +742,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
 
                 task_id = payload.get("id")
                 new_status = payload.get("status")
+                task_title = payload.get("title")
 
                 if not task_id or not new_status:
                     self.send_response(400)
@@ -743,13 +755,21 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                 target = None
                 for a in assignments:
                     if str(a.get("id")) == str(task_id):
-                        a["status"] = new_status
-                        if new_status == "submitted":
-                            a["completedAt"] = datetime.now(JST).isoformat()
-                        elif new_status == "not_started":
-                            a["completedAt"] = None
                         target = a
                         break
+
+                if not target and task_title:
+                    for a in assignments:
+                        if a.get("title", "").strip() == str(task_title).strip():
+                            target = a
+                            break
+
+                if target:
+                    target["status"] = new_status
+                    if new_status == "submitted":
+                        target["completedAt"] = datetime.now(JST).isoformat()
+                    elif new_status == "not_started":
+                        target["completedAt"] = None
 
                 if target:
                     save_assignments(assignments)

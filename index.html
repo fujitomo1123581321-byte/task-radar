@@ -761,6 +761,88 @@
       });
     }
 
+    // --- PERSISTENT COMPLETED REGISTRY HELPERS ---
+    function markTaskCompleted(a) {
+      if (!a) return;
+      try {
+        let completedIds = JSON.parse(localStorage.getItem('deadline_radar_completed_ids') || '[]');
+        let completedTitles = JSON.parse(localStorage.getItem('deadline_radar_completed_titles') || '[]');
+        let completedUids = JSON.parse(localStorage.getItem('deadline_radar_completed_uids') || '[]');
+
+        if (a.id && !completedIds.includes(String(a.id))) completedIds.push(String(a.id));
+        if (a.title && !completedTitles.includes(a.title.trim())) completedTitles.push(a.title.trim());
+        if (a.moodleUid && !completedUids.includes(a.moodleUid.trim())) completedUids.push(a.moodleUid.trim());
+
+        localStorage.setItem('deadline_radar_completed_ids', JSON.stringify(completedIds));
+        localStorage.setItem('deadline_radar_completed_titles', JSON.stringify(completedTitles));
+        localStorage.setItem('deadline_radar_completed_uids', JSON.stringify(completedUids));
+      } catch (e) {
+        console.warn('Failed to update completed registry:', e);
+      }
+    }
+
+    function markTaskUncompleted(a) {
+      if (!a) return;
+      try {
+        let completedIds = JSON.parse(localStorage.getItem('deadline_radar_completed_ids') || '[]');
+        let completedTitles = JSON.parse(localStorage.getItem('deadline_radar_completed_titles') || '[]');
+        let completedUids = JSON.parse(localStorage.getItem('deadline_radar_completed_uids') || '[]');
+
+        if (a.id) completedIds = completedIds.filter(id => id !== String(a.id));
+        if (a.title) completedTitles = completedTitles.filter(t => t !== a.title.trim());
+        if (a.moodleUid) completedUids = completedUids.filter(u => u !== a.moodleUid.trim());
+
+        localStorage.setItem('deadline_radar_completed_ids', JSON.stringify(completedIds));
+        localStorage.setItem('deadline_radar_completed_titles', JSON.stringify(completedTitles));
+        localStorage.setItem('deadline_radar_completed_uids', JSON.stringify(completedUids));
+      } catch (e) {
+        console.warn('Failed to update completed registry:', e);
+      }
+    }
+
+    function applyCompletedOverrides(items) {
+      if (!Array.isArray(items)) return [];
+      let completedIds = [];
+      let completedTitles = [];
+      let completedUids = [];
+      try {
+        completedIds = JSON.parse(localStorage.getItem('deadline_radar_completed_ids') || '[]');
+        completedTitles = JSON.parse(localStorage.getItem('deadline_radar_completed_titles') || '[]');
+        completedUids = JSON.parse(localStorage.getItem('deadline_radar_completed_uids') || '[]');
+      } catch (_) {}
+
+      // Pre-seed completed registry from any tasks already marked submitted
+      let updated = false;
+      items.forEach(a => {
+        if (a.status === 'submitted') {
+          if (a.id && !completedIds.includes(String(a.id))) { completedIds.push(String(a.id)); updated = true; }
+          if (a.title && !completedTitles.includes(a.title.trim())) { completedTitles.push(a.title.trim()); updated = true; }
+          if (a.moodleUid && !completedUids.includes(a.moodleUid.trim())) { completedUids.push(a.moodleUid.trim()); updated = true; }
+        }
+      });
+      if (updated) {
+        try {
+          localStorage.setItem('deadline_radar_completed_ids', JSON.stringify(completedIds));
+          localStorage.setItem('deadline_radar_completed_titles', JSON.stringify(completedTitles));
+          localStorage.setItem('deadline_radar_completed_uids', JSON.stringify(completedUids));
+        } catch (_) {}
+      }
+
+      return items.map(a => {
+        const isCompleted = (a.id && completedIds.includes(String(a.id))) ||
+                            (a.title && completedTitles.includes(a.title.trim())) ||
+                            (a.moodleUid && completedUids.includes(a.moodleUid.trim()));
+        if (isCompleted && a.status !== 'submitted') {
+          return {
+            ...a,
+            status: 'submitted',
+            completedAt: a.completedAt || new Date().toISOString()
+          };
+        }
+        return a;
+      });
+    }
+
     // --- INITIALIZATION ---
     function init() {
       const saved = localStorage.getItem('deadline_radar_assignments');
@@ -776,6 +858,8 @@
 
       // Filter out ignored and deleted tasks from the start
       assignments = applyIgnoreAndDeletedFilters(assignments);
+      // Enforce completed tasks from persistent registry
+      assignments = applyCompletedOverrides(assignments);
 
       // Ensure every assignment has a category
       assignments.forEach(a => {
@@ -822,27 +906,60 @@
             const serverData = await res.json();
             if (Array.isArray(serverData) && serverData.length > 0) {
               // 1. Strictly filter out tasks that user ignored or deleted locally
-              const filteredServerData = applyIgnoreAndDeletedFilters(serverData);
+              let filteredServerData = applyIgnoreAndDeletedFilters(serverData);
 
-              // 2. Smart Merge: Preserve locally completed or modified status so server polling never reverts user actions
+              // 2. Enforce completed status using persistent registry
+              filteredServerData = applyCompletedOverrides(filteredServerData);
+
+              // 3. Smart Merge: Preserve locally completed or modified status so server polling never reverts user actions
               const localSaved = localStorage.getItem('deadline_radar_assignments');
-              let localMap = new Map();
+              let localById = new Map();
+              let localByTitle = new Map();
+              let localByUid = new Map();
+
               if (localSaved) {
                 try {
                   const localArr = JSON.parse(localSaved);
                   if (Array.isArray(localArr)) {
-                    localMap = new Map(localArr.map(x => [String(x.id), x]));
+                    localArr.forEach(x => {
+                      if (x.id) localById.set(String(x.id), x);
+                      if (x.title) localByTitle.set(x.title.trim(), x);
+                      if (x.moodleUid) localByUid.set(x.moodleUid.trim(), x);
+                    });
                   }
                 } catch (_) {}
               }
 
+              // Also incorporate in-memory assignments state
+              assignments.forEach(x => {
+                if (x.id && !localById.has(String(x.id))) localById.set(String(x.id), x);
+                if (x.title && !localByTitle.has(x.title.trim())) localByTitle.set(x.title.trim(), x);
+                if (x.moodleUid && !localByUid.has(x.moodleUid.trim())) localByUid.set(x.moodleUid.trim(), x);
+              });
+
+              let completedIds = [];
+              let completedTitles = [];
+              let completedUids = [];
+              try {
+                completedIds = JSON.parse(localStorage.getItem('deadline_radar_completed_ids') || '[]');
+                completedTitles = JSON.parse(localStorage.getItem('deadline_radar_completed_titles') || '[]');
+                completedUids = JSON.parse(localStorage.getItem('deadline_radar_completed_uids') || '[]');
+              } catch (_) {}
+
               const merged = filteredServerData.map(serverItem => {
-                const localItem = localMap.get(String(serverItem.id));
+                const localItem = localById.get(String(serverItem.id))
+                  || (serverItem.moodleUid && localByUid.get(serverItem.moodleUid.trim()))
+                  || (serverItem.title && localByTitle.get(serverItem.title.trim()));
+
+                const isRegisteredDone = completedIds.includes(String(serverItem.id))
+                  || (serverItem.title && completedTitles.includes(serverItem.title.trim()))
+                  || (serverItem.moodleUid && completedUids.includes(serverItem.moodleUid.trim()));
+
+                if (isRegisteredDone || (localItem && localItem.status === 'submitted')) {
+                  // If completed, NEVER let older server data revert it back!
+                  return { ...serverItem, status: 'submitted', completedAt: (localItem && localItem.completedAt) || serverItem.completedAt || new Date().toISOString() };
+                }
                 if (localItem) {
-                  // If locally submitted, NEVER let older server data revert it back to unsubmitted!
-                  if (localItem.status === 'submitted' && serverItem.status !== 'submitted') {
-                    return { ...serverItem, status: 'submitted', completedAt: localItem.completedAt || new Date().toISOString() };
-                  }
                   // If locally in_progress, keep it
                   if (localItem.status === 'in_progress' && serverItem.status === 'not_started') {
                     return { ...serverItem, status: 'in_progress' };
@@ -851,7 +968,18 @@
                 return serverItem;
               });
 
-              assignments = merged;
+              // Keep local-only custom tasks (e.g. personal tasks created on web not yet in serverData)
+              const serverIdSet = new Set(filteredServerData.map(s => String(s.id)));
+              const serverTitleSet = new Set(filteredServerData.map(s => s.title ? s.title.trim() : ''));
+              const localOnlyTasks = assignments.filter(a => 
+                !serverIdSet.has(String(a.id)) && 
+                (!a.title || !serverTitleSet.has(a.title.trim())) && 
+                String(a.id).startsWith('task-')
+              );
+
+              assignments = [...merged, ...localOnlyTasks];
+              assignments = applyCompletedOverrides(assignments);
+
               assignments.forEach(a => {
                 if (!a.category) {
                   a.category = (a.subject === '手続き' || a.subject === '生活' || a.subject === '個人') ? 'personal' : 'academic';
@@ -938,6 +1066,13 @@
     }
 
     function saveAssignments() {
+      // Keep completed registry in sync with current state
+      assignments.forEach(a => {
+        if (a.status === 'submitted') {
+          markTaskCompleted(a);
+        }
+      });
+
       localStorage.setItem('deadline_radar_assignments', JSON.stringify(assignments));
       updateCategoryBadges();
       renderSubjectFilter();
@@ -1309,15 +1444,15 @@
     // --- CLOUD SYNC HELPER ---
     const CLOUD_SYNC_BASE = 'https://task-radar-us.onrender.com';
 
-    function syncStatusToCloud(taskId, status) {
+    function syncStatusToCloud(taskId, status, title = null) {
       if (!taskId) return;
       fetch(`${CLOUD_SYNC_BASE}/api/task-status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: taskId, status: status })
+        body: JSON.stringify({ id: taskId, status: status, title: title })
       }).then(res => {
         if (res.ok) {
-          console.log(`[Cloud Task Sync] Successfully synced task ${taskId} -> ${status}`);
+          console.log(`[Cloud Task Sync] Successfully synced task ${taskId} (${title || ''}) -> ${status}`);
         }
       }).catch(err => {
         console.warn('[Cloud Task Sync Notice] Cloud server ping skipped:', err);
@@ -1349,19 +1484,22 @@
 
       if (a.status === 'not_started') {
         a.status = 'in_progress';
+        markTaskUncompleted(a);
         showToast(`「${a.title}」を進行中にしました`);
       } else if (a.status === 'in_progress') {
         a.status = 'submitted';
         a.completedAt = new Date().toISOString();
+        markTaskCompleted(a);
         showToast(`🎉「${a.title}」を完了にしました！`);
       } else {
         a.status = 'not_started';
         a.completedAt = null;
+        markTaskUncompleted(a);
         showToast(`「${a.title}」を未着手に戻しました`);
       }
 
       saveAssignments();
-      syncStatusToCloud(a.id, a.status);
+      syncStatusToCloud(a.id, a.status, a.title);
     }
 
     function deleteAssignment(id) {
@@ -1586,8 +1724,11 @@
           a.priority = priority;
           a.status = status;
           a.memo = memo;
-          if (status === 'submitted' && !a.completedAt) {
-            a.completedAt = new Date().toISOString();
+          if (status === 'submitted') {
+            if (!a.completedAt) a.completedAt = new Date().toISOString();
+            markTaskCompleted(a);
+          } else {
+            markTaskUncompleted(a);
           }
         }
         showToast('更新しました');
@@ -1606,12 +1747,15 @@
           completedAt: status === 'submitted' ? new Date().toISOString() : null
         };
         assignments.push(newAssignment);
+        if (status === 'submitted') {
+          markTaskCompleted(newAssignment);
+        }
         showToast('登録しました');
       }
 
       saveAssignments();
       if (id) {
-        syncStatusToCloud(id, status);
+        syncStatusToCloud(id, status, title);
       }
       closeModal();
     }
