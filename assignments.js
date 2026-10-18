@@ -215,7 +215,7 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "レポート課題 締め切り10/18(日)23:59(JST)",
     "deadline": "2026-10-18T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": "high",
     "memo": "演習問題1-9, 1-10, 1-11, 1-12のから少なくとも一問を解いて提出してください。  ",
     "folderPath": null,
@@ -578,34 +578,6 @@ window.INITIAL_ASSIGNMENTS = [
     "memo": "今週中",
     "folderPath": null,
     "createdAt": "2026-10-19T00:54:06.827625+09:00",
-    "completedAt": null
-  },
-  {
-    "id": "custom-20261019005433",
-    "category": "personal",
-    "subject": "個人",
-    "title": "三門チェンソー買う？",
-    "deadline": "2026-10-25T23:59:59",
-    "submissionMethod": "Discord Bot",
-    "status": "not_started",
-    "priority": "medium",
-    "memo": "今週中",
-    "folderPath": null,
-    "createdAt": "2026-10-19T00:54:33.721340+09:00",
-    "completedAt": null
-  },
-  {
-    "id": "custom-20261019005454",
-    "category": "personal",
-    "subject": "個人",
-    "title": "蒼空　Σ70mm買う",
-    "deadline": "2026-10-23T23:59:59",
-    "submissionMethod": "Discord Bot",
-    "status": "not_started",
-    "priority": "medium",
-    "memo": "Discordより登録",
-    "folderPath": null,
-    "createdAt": "2026-10-19T00:54:54.896848+09:00",
     "completedAt": null
   }
 ];
