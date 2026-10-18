@@ -37,7 +37,24 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=BASE_DIR, **kwargs)
 
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.end_headers()
+
     def do_GET(self):
+        # Block unauthorized access to sensitive files
+        forbidden_patterns = ["config.json", ".env", ".git", ".vbs", ".bat"]
+        normalized_path = self.path.lower().split("?")[0]
+        if any(p in normalized_path for p in forbidden_patterns) or (normalized_path.endswith(".py") and not normalized_path.startswith("/api/")):
+            self.send_response(403)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"403 Forbidden: Access to sensitive file is prohibited.")
+            return
+
         if self.path == "/api/info":
             local_ip = get_local_ip()
             info = {
@@ -60,13 +77,18 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
             body = self.rfile.read(content_length).decode("utf-8")
             try:
                 data = json.loads(body)
-                # Save JSON
-                with open(JSON_PATH, "w", encoding="utf-8") as f:
+                # Atomic Save JSON
+                temp_json = JSON_PATH + ".tmp"
+                with open(temp_json, "w", encoding="utf-8") as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
+                os.replace(temp_json, JSON_PATH)
+
                 # Also save JS for file:// fallback
-                with open(JS_PATH, "w", encoding="utf-8") as f:
+                temp_js = JS_PATH + ".tmp"
+                with open(temp_js, "w", encoding="utf-8") as f:
                     f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(data, ensure_ascii=False, indent=2) + ";\n")
-                
+                os.replace(temp_js, JS_PATH)
+
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Access-Control-Allow-Origin", "*")
@@ -128,6 +150,20 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                         cfg["ignored_titles"] = ignored
                         with open(cfg_path, "w", encoding="utf-8") as f:
                             json.dump(cfg, f, ensure_ascii=False, indent=2)
+
+                    # Also persist in ignored_titles.json
+                    ign_path = os.path.join(BASE_DIR, "ignored_titles.json")
+                    ign_list = []
+                    if os.path.exists(ign_path):
+                        try:
+                            with open(ign_path, "r", encoding="utf-8") as f:
+                                ign_list = json.load(f)
+                        except Exception:
+                            ign_list = []
+                    if title not in ign_list:
+                        ign_list.append(title)
+                        with open(ign_path, "w", encoding="utf-8") as f:
+                            json.dump(ign_list, f, ensure_ascii=False, indent=2)
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")

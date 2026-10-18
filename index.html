@@ -978,20 +978,24 @@
                   || (serverItem.title && completedTitles.includes(serverItem.title.trim()))
                   || (serverItem.moodleUid && completedUids.includes(serverItem.moodleUid.trim()));
 
-                if (isRegisteredDone || (localItem && localItem.status === 'submitted')) {
-                  // If completed, NEVER let older server data revert it back!
-                  if (serverItem.status !== 'submitted' && typeof throttledCloudStatusSync === 'function') {
-                    throttledCloudStatusSync(serverItem.id, 'submitted', serverItem.title);
+                if (serverItem.status === 'submitted') {
+                  return serverItem;
+                } else {
+                  // Server has not_started or in_progress
+                  if (localItem && localItem.status === 'submitted') {
+                    // Locally submitted - sync to cloud
+                    if (typeof throttledCloudStatusSync === 'function') {
+                      throttledCloudStatusSync(serverItem.id, 'submitted', serverItem.title);
+                    }
+                    return { ...serverItem, status: 'submitted', completedAt: localItem.completedAt || new Date().toISOString() };
                   }
-                  return { ...serverItem, status: 'submitted', completedAt: (localItem && localItem.completedAt) || serverItem.completedAt || new Date().toISOString() };
-                }
-                if (localItem) {
-                  // If locally in_progress, keep it
-                  if (localItem.status === 'in_progress' && serverItem.status === 'not_started') {
+                  // Neither server nor local memory is submitted: clear any stale localStorage registry
+                  markTaskUncompleted(serverItem);
+                  if (localItem && localItem.status === 'in_progress') {
                     return { ...serverItem, status: 'in_progress' };
                   }
+                  return serverItem;
                 }
-                return serverItem;
               });
 
               // Keep local-only custom tasks (e.g. personal tasks created on web not yet in serverData)
@@ -1000,11 +1004,10 @@
               const localOnlyTasks = assignments.filter(a => 
                 !serverIdSet.has(String(a.id)) && 
                 (!a.title || !serverTitleSet.has(a.title.trim())) && 
-                String(a.id).startsWith('task-')
+                (String(a.id).startsWith('task-') || String(a.id).startsWith('custom-'))
               );
 
               assignments = [...merged, ...localOnlyTasks];
-              assignments = applyCompletedOverrides(assignments);
 
               assignments.forEach(a => {
                 if (!a.category) {
@@ -1172,9 +1175,11 @@
         </span>`;
       }
 
+      if (!deadlineStr) return '';
       const now = new Date();
       const deadline = new Date(deadlineStr);
       const diffMs = deadline - now;
+      if (isNaN(diffMs)) return '';
 
       if (diffMs <= 0) {
         return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-950/80 text-rose-300 border border-rose-600/50">
@@ -1330,16 +1335,17 @@
         if (currentTab === 'urgent') {
           if (a.status === 'submitted') return false;
           const diffMs = new Date(a.deadline) - now;
-          if (diffMs <= 0 || diffMs > 3 * 24 * 3600 * 1000) return false;
+          if (diffMs > 3 * 24 * 3600 * 1000) return false;
         }
 
         if (selectedSubject !== 'ALL' && a.subject !== selectedSubject) return false;
 
         if (searchKeyword) {
-          const matchTitle = a.title.toLowerCase().includes(searchKeyword);
-          const matchSub = a.subject.toLowerCase().includes(searchKeyword);
-          const matchMemo = (a.memo || '').toLowerCase().includes(searchKeyword);
-          const matchMethod = (a.submissionMethod || '').toLowerCase().includes(searchKeyword);
+          const normKey = searchKeyword.normalize('NFKC').toLowerCase().trim();
+          const matchTitle = (a.title || '').normalize('NFKC').toLowerCase().includes(normKey);
+          const matchSub = (a.subject || '').normalize('NFKC').toLowerCase().includes(normKey);
+          const matchMemo = (a.memo || '').normalize('NFKC').toLowerCase().includes(normKey);
+          const matchMethod = (a.submissionMethod || '').normalize('NFKC').toLowerCase().includes(normKey);
           if (!matchTitle && !matchSub && !matchMemo && !matchMethod) return false;
         }
 
@@ -1353,7 +1359,7 @@
           const pMap = { high: 3, medium: 2, low: 1 };
           return (pMap[b.priority] || 2) - (pMap[a.priority] || 2);
         }
-        if (sortMode === 'subjectAsc') return a.subject.localeCompare(b.subject, 'ja');
+        if (sortMode === 'subjectAsc') return (a.subject || '').localeCompare(b.subject || '', 'ja');
         if (sortMode === 'createdDesc') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
         return 0;
       });
@@ -1523,6 +1529,32 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: title, id: taskId })
       }).catch(() => {});
+    }
+
+    function syncTaskAddToCloud(task) {
+      if (!task || !task.title) return;
+      fetch(`${CLOUD_SYNC_BASE}/api/task-add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task: task })
+      }).then(res => {
+        if (res.ok) console.log(`[Cloud Task Sync] Successfully added new task: ${task.title}`);
+      }).catch(err => {
+        console.warn('[Cloud Task Sync Notice] Add task skipped:', err);
+      });
+    }
+
+    function syncTaskUpdateToCloud(task) {
+      if (!task || !task.id) return;
+      fetch(`${CLOUD_SYNC_BASE}/api/task-update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task: task })
+      }).then(res => {
+        if (res.ok) console.log(`[Cloud Task Sync] Successfully updated task: ${task.title}`);
+      }).catch(err => {
+        console.warn('[Cloud Task Sync Notice] Update task skipped:', err);
+      });
     }
 
     const _lastSyncedCloudTimes = new Map();
@@ -1834,7 +1866,15 @@
 
       saveAssignments();
       if (id) {
-        syncStatusToCloud(id, status, title);
+        const updated = assignments.find(x => x.id === id);
+        if (updated) {
+          syncTaskUpdateToCloud(updated);
+        }
+      } else {
+        const added = assignments[assignments.length - 1];
+        if (added) {
+          syncTaskAddToCloud(added);
+        }
       }
       closeModal();
     }
@@ -1932,7 +1972,16 @@
         const line = lines[i];
         const match = line.match(dateRegex);
         if (match) {
-          const year = match[1] || new Date().getFullYear();
+          let year = match[1];
+          if (!year) {
+            const now = new Date();
+            year = now.getFullYear();
+            const currentMonth = now.getMonth() + 1;
+            const parsedMonth = parseInt(match[2], 10);
+            if (currentMonth >= 10 && parsedMonth <= 3) {
+              year += 1;
+            }
+          }
           const month = String(match[2]).padStart(2, '0');
           const day = String(match[3]).padStart(2, '0');
           const hour = String(match[4]).padStart(2, '0');
@@ -2049,12 +2098,25 @@
           
           let deadline = '';
           if (rawDate.length >= 15) {
-            const y = rawDate.substr(0, 4);
-            const m = rawDate.substr(4, 2);
-            const d = rawDate.substr(6, 2);
-            const hh = rawDate.substr(9, 2);
-            const mm = rawDate.substr(11, 2);
-            deadline = `${y}-${m}-${d}T${hh}:${mm}:00`;
+            const y = parseInt(rawDate.substr(0, 4), 10);
+            const m = parseInt(rawDate.substr(4, 2), 10);
+            const d = parseInt(rawDate.substr(6, 2), 10);
+            const hh = parseInt(rawDate.substr(9, 2), 10);
+            const mm = parseInt(rawDate.substr(11, 2), 10);
+            const ss = parseInt(rawDate.substr(13, 2), 10) || 0;
+            if (rawDate.endsWith('Z')) {
+              // Convert UTC to JST (+9 hours)
+              const utcDate = new Date(Date.UTC(y, m - 1, d, hh, mm, ss));
+              const jstDate = new Date(utcDate.getTime() + 9 * 3600 * 1000);
+              const jy = jstDate.getUTCFullYear();
+              const jm = String(jstDate.getUTCMonth() + 1).padStart(2, '0');
+              const jd = String(jstDate.getUTCDate()).padStart(2, '0');
+              const jh = String(jstDate.getUTCHours()).padStart(2, '0');
+              const jmin = String(jstDate.getUTCMinutes()).padStart(2, '0');
+              deadline = `${jy}-${jm}-${jd}T${jh}:${jmin}:00`;
+            } else {
+              deadline = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`;
+            }
           }
 
           let subject = '学業';

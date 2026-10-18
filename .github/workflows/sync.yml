@@ -45,7 +45,7 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add assignments.json assignments.js
+          git add assignments.json assignments.js ignored_titles.json
           if git diff --staged --quiet; then
             echo "No changes in assignments data."
           else

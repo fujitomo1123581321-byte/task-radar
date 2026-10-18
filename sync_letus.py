@@ -17,12 +17,17 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 JSON_PATH = os.path.join(BASE_DIR, "assignments.json")
 JS_PATH = os.path.join(BASE_DIR, "assignments.js")
+IGNORED_PATH = os.path.join(BASE_DIR, "ignored_titles.json")
 
 SUBJECT_MAP = {
     '物性論２Ａ': '01物性論2A',
     '物性論2A': '01物性論2A',
     '物性論２Ｂ': '02物性論2B',
     '物性論2B': '02物性論2B',
+    '物性論２Ｃ': '02物性論2C',
+    '物性論2C': '02物性論2C',
+    '物性論３Ｂ': '02物性論3B',
+    '物性論3B': '02物性論3B',
     '統計力学２': '02統計力学2',
     '統計力学2': '02統計力学2',
     '量子力学３': '03量子力学3',
@@ -38,6 +43,18 @@ SUBJECT_MAP = {
     'データサイエンス': '11データサイエンス・ＡＩ応用基礎',
 }
 
+def load_ignored_titles():
+    titles = set()
+    if os.path.exists(IGNORED_PATH):
+        try:
+            with open(IGNORED_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    titles.update(data)
+        except Exception:
+            pass
+    return list(titles)
+
 def load_config():
     cfg = {"letus_calendar_url": "", "notify_windows": sys.platform == "win32", "ignore_keywords": [], "ignored_titles": []}
     if os.path.exists(CONFIG_PATH):
@@ -46,6 +63,9 @@ def load_config():
                 cfg.update(json.load(f))
         except Exception:
             pass
+    # Merge persisted ignored_titles.json (especially crucial for GitHub Actions / Cloud)
+    cfg["ignored_titles"] = list(set(cfg.get("ignored_titles", []) + load_ignored_titles()))
+
     # Prioritize environment variables (for GitHub Actions / Cloud)
     if os.environ.get("LETUS_CALENDAR_URL"):
         cfg["letus_calendar_url"] = os.environ.get("LETUS_CALENDAR_URL").strip()
@@ -126,7 +146,8 @@ def clean_title(raw_title):
     # イベント名 の受験可能期間の終了 -> イベント名
     t = re.sub(r"\s*の受験可能期間の終了$", "", t)
     t = re.sub(r"\s*の提出期限$", "", t)
-    return t
+    t = re.sub(r"\s*が期限です。?$", "", t)
+    return t.strip()
 
 def fetch_and_sync():
     cfg = load_config()
@@ -180,8 +201,14 @@ def fetch_and_sync():
         raw_desc = raw_desc.replace(r"\n", " ").replace(r"\,", ",")
         uid = uid_m.group(1).strip() if uid_m else ""
 
-        # Skip start notifications (e.g. 「〜の受験可能期間の開始」)
-        if "の受験可能期間の開始" in raw_summary or "開始" in raw_summary and "終了" not in raw_summary:
+        # Skip start notifications (e.g. 「〜の受験可能期間の開始」, 「〜」開始)
+        # Avoid falsely skipping legitimate titles like 「実験開始前レポート」
+        is_start_event = (
+            "の受験可能期間の開始" in raw_summary or
+            raw_summary.endswith("」開始") or
+            raw_summary.endswith(" 開始")
+        )
+        if is_start_event:
             continue
 
         raw_dtend = dtend_m.group(1).strip()
@@ -264,6 +291,23 @@ def fetch_and_sync():
                 "📥 LETUS新着課題が同期されました",
                 f"{len(upcoming_new)}件の提出予定課題が追加されました！"
             )
+
+    # Auto-push to GitHub if git is available and changes were made
+    if new_items or updated_count > 0:
+        try:
+            import subprocess
+            files = ["assignments.json", "assignments.js"]
+            if os.path.exists(IGNORED_PATH):
+                files.append("ignored_titles.json")
+            status = subprocess.run(["git", "status", "--porcelain"] + files, cwd=BASE_DIR, capture_output=True, text=True)
+            if any(f in status.stdout for f in files):
+                subprocess.run(["git", "add"] + files, cwd=BASE_DIR, check=True, capture_output=True)
+                msg = f"Auto-sync LETUS assignments (New: {len(new_items)}, Updated: {updated_count})"
+                subprocess.run(["git", "commit", "-m", msg], cwd=BASE_DIR, check=True, capture_output=True)
+                subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, check=True, capture_output=True)
+                print("🚀 GitHubへ自動プッシュしました！")
+        except Exception:
+            pass
 
     # Also check imminent deadlines and notify
     try:

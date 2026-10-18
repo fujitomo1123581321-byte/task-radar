@@ -38,8 +38,27 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 JSON_PATH = os.path.join(BASE_DIR, "assignments.json")
 JS_PATH = os.path.join(BASE_DIR, "assignments.js")
+IGNORED_PATH = os.path.join(BASE_DIR, "ignored_titles.json")
 
 JST = timezone(timedelta(hours=9))
+
+def load_ignored_titles():
+    if os.path.exists(IGNORED_PATH):
+        try:
+            with open(IGNORED_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+        except Exception:
+            pass
+    return []
+
+def save_ignored_titles(titles):
+    try:
+        with open(IGNORED_PATH, "w", encoding="utf-8") as f:
+            json.dump(list(set(titles)), f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
 
 def load_config():
     cfg = {}
@@ -142,15 +161,25 @@ def git_push_sync(commit_msg="Update assignments via Discord Bot"):
             sync_to_github_via_api("assignments.json", json_bytes, commit_msg, gh_token)
             time.sleep(0.5)
             sync_to_github_via_api("assignments.js", js_bytes, commit_msg, gh_token)
+
+            if os.path.exists(IGNORED_PATH):
+                with open(IGNORED_PATH, "rb") as f:
+                    ign_bytes = f.read()
+                time.sleep(0.5)
+                sync_to_github_via_api("ignored_titles.json", ign_bytes, commit_msg, gh_token)
+
             print(f"[Cloud Git Sync] Pushed to GitHub via API: {commit_msg}")
             return True
         except Exception as e:
             print(f"[Cloud Git Sync Warning] API sync failed, trying local git: {e}")
 
     try:
-        subprocess.run(["git", "add", "assignments.json", "assignments.js"], cwd=BASE_DIR, check=True, capture_output=True)
-        status = subprocess.run(["git", "status", "--porcelain"], cwd=BASE_DIR, capture_output=True, text=True)
-        if "assignments.json" in status.stdout or "assignments.js" in status.stdout:
+        files = ["assignments.json", "assignments.js"]
+        if os.path.exists(IGNORED_PATH):
+            files.append("ignored_titles.json")
+        subprocess.run(["git", "add"] + files, cwd=BASE_DIR, check=True, capture_output=True)
+        status = subprocess.run(["git", "status", "--porcelain"] + files, cwd=BASE_DIR, capture_output=True, text=True)
+        if any(f in status.stdout for f in files):
             subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, check=True, capture_output=True)
             subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, check=True, capture_output=True)
             print(f"[Local Git Sync] Successfully pushed to GitHub: {commit_msg}")
@@ -850,6 +879,13 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                 new_assignments = [a for a in assignments if a.get("title") != title and str(a.get("id")) != str(task_id)]
                 save_assignments(new_assignments)
 
+                # Persist in ignored_titles.json (committed to git so GitHub Actions never resurrects it)
+                if title:
+                    cur_ignored = load_ignored_titles()
+                    if title not in cur_ignored:
+                        cur_ignored.append(title)
+                        save_ignored_titles(cur_ignored)
+
                 # Add to local config.json ignored_titles if present
                 cfg = load_config()
                 if "ignored_titles" not in cfg:
@@ -875,6 +911,112 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(b'{"status": "ok", "action": "ignored"}')
                 print(f"🌐 [Web Sync API] Task '{title}' permanently ignored via Web")
+            except Exception as e:
+                self.send_response(500)
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+        elif self.path in ("/api/task-add", "/api/task-add/"):
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len)
+                payload = json.loads(body.decode("utf-8"))
+                task = payload.get("task") or payload
+                
+                title = task.get("title", "").strip()
+                if not title:
+                    self.send_response(400)
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Missing task title"}')
+                    return
+
+                if not task.get("id"):
+                    task["id"] = "custom-" + datetime.now(JST).strftime("%Y%m%d%H%M%S")
+                if not task.get("createdAt"):
+                    task["createdAt"] = datetime.now(JST).isoformat()
+                if not task.get("status"):
+                    task["status"] = "not_started"
+
+                assignments = load_assignments()
+                # Check for existing id
+                assignments = [a for a in assignments if str(a.get("id")) != str(task["id"])]
+                assignments.append(task)
+                save_assignments(assignments)
+
+                threading.Thread(
+                    target=git_push_sync,
+                    args=(f"Add task via Web: {title}",),
+                    daemon=True
+                ).start()
+
+                resp = json.dumps({"status": "ok", "action": "added", "task": task}, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(resp)))
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(resp)
+                print(f"🌐 [Web Sync API] New task '{title}' added via Web")
+            except Exception as e:
+                self.send_response(500)
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+        elif self.path in ("/api/task-update", "/api/task-update/"):
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len)
+                payload = json.loads(body.decode("utf-8"))
+                task = payload.get("task") or payload
+                task_id = str(task.get("id", ""))
+
+                if not task_id:
+                    self.send_response(400)
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Missing task id"}')
+                    return
+
+                assignments = load_assignments()
+                target = None
+                for a in assignments:
+                    if str(a.get("id")) == task_id:
+                        target = a
+                        break
+
+                if target:
+                    # Update fields
+                    for k in ("title", "subject", "deadline", "category", "priority", "memo", "submissionMethod", "status"):
+                        if k in task and task[k] is not None:
+                            target[k] = task[k]
+                    if target.get("status") == "submitted" and not target.get("completedAt"):
+                        target["completedAt"] = datetime.now(JST).isoformat()
+                    elif target.get("status") != "submitted":
+                        target["completedAt"] = None
+
+                    save_assignments(assignments)
+                    threading.Thread(
+                        target=git_push_sync,
+                        args=(f"Update task '{target.get('title')}' details via Web",),
+                        daemon=True
+                    ).start()
+
+                    resp = json.dumps({"status": "ok", "action": "updated", "task": target}, ensure_ascii=False).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Content-Length", str(len(resp)))
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(resp)
+                    print(f"🌐 [Web Sync API] Task '{target.get('title')}' updated via Web")
+                else:
+                    self.send_response(404)
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Task not found"}')
             except Exception as e:
                 self.send_response(500)
                 self._send_cors()
