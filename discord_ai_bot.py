@@ -27,6 +27,8 @@ from datetime import datetime, timezone, timedelta
 import urllib.request
 import urllib.error
 
+import threading
+import http.server
 import discord
 from discord.ext import commands
 from aiohttp import web
@@ -274,25 +276,16 @@ def call_gemini(prompt: str, api_key: str):
     for model_name in GEMINI_MODELS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-        timeout = 5 if "8b" in model_name else 8
+        timeout = 5 if "lite" in model_name else 8
         try:
             with urllib.request.urlopen(req, timeout=timeout) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
-                candidates = res_data.get("candidates", [])
-                if not candidates:
-                    continue
-                parts = candidates[0].get("content", {}).get("parts", [])
-                if not parts:
-                    continue
-                text = parts[0].get("text", "")
-                if text:
-                    return text, model_name
+                text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                return text, model_name
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="ignore")
             print(f"[Gemini Fallback] Model {model_name} HTTP {e.code}: {err_body[:80]}")
             last_error = f"{model_name} (HTTP {e.code})"
-            if e.code == 429:
-                time.sleep(1)
             continue
         except Exception as e:
             print(f"[Gemini Fallback] Model {model_name} Error: {e}")
