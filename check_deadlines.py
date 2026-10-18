@@ -73,9 +73,15 @@ def notify_discord(webhook_url, title, items):
             rem = a.get("remaining_text", "")
             method = a.get("submissionMethod", "LETUS")
             
+            fname = f"📌 {tag} {subject}: {a.get('title')}"
+            if len(fname) > 250:
+                fname = fname[:247] + "..."
+            fval = f"⏳ **{rem}** | 📅 締切: `{dl}` | 提出先: {method}"
+            if len(fval) > 1000:
+                fval = fval[:997] + "..."
             fields.append({
-                "name": f"📌 {tag} {subject}: {a.get('title')}",
-                "value": f"⏳ **{rem}** | 📅 締切: `{dl}` | 提出先: {method}",
+                "name": fname,
+                "value": fval,
                 "inline": False
             })
 

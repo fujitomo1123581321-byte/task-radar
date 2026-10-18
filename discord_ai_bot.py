@@ -81,23 +81,61 @@ def load_config():
 
 CONFIG = load_config()
 
+SYNC_LOCK = threading.Lock()
+
+def fetch_remote_assignments():
+    try:
+        url = f"https://raw.githubusercontent.com/fujitomo1123581321-byte/task-radar/main/assignments.json?_={int(time.time())}"
+        req = urllib.request.Request(url, headers={"User-Agent": "TaskRadarBot"})
+        with urllib.request.urlopen(req, timeout=5) as res:
+            return json.loads(res.read().decode("utf-8"))
+    except Exception:
+        return []
+
 def load_assignments():
-    if not os.path.exists(JSON_PATH):
+    local = []
+    if os.path.exists(JSON_PATH):
         try:
-            url = "https://raw.githubusercontent.com/fujitomo1123581321-byte/task-radar/main/assignments.json"
-            req = urllib.request.Request(url, headers={"User-Agent": "TaskRadarBot"})
-            with urllib.request.urlopen(req, timeout=5) as res:
-                return json.loads(res.read().decode("utf-8"))
+            with open(JSON_PATH, "r", encoding="utf-8") as f:
+                local = json.load(f)
         except Exception:
-            return []
-    with open(JSON_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+            local = []
+
+    remote = fetch_remote_assignments()
+    if not remote:
+        return local
+    if not local:
+        save_assignments(remote)
+        return remote
+
+    # 2-way Smart Merge: Remote (GitHub Actions/LETUS updates) + Local (user changes)
+    local_map = {str(a.get("id")): a for a in local if a.get("id")}
+    merged = []
+    for r in remote:
+        rid = str(r.get("id"))
+        if rid in local_map:
+            loc = local_map.pop(rid)
+            # Local completion / progress status takes precedence over remote default
+            if loc.get("status") == "submitted":
+                r["status"] = "submitted"
+                r["completedAt"] = loc.get("completedAt") or r.get("completedAt")
+            elif loc.get("status") == "in_progress" and r.get("status") == "not_started":
+                r["status"] = "in_progress"
+            merged.append(r)
+        else:
+            merged.append(r)
+    # Add any user-created tasks that are only on local
+    for loc_item in local_map.values():
+        merged.append(loc_item)
+
+    return merged
 
 def save_assignments(items):
-    with open(JSON_PATH, "w", encoding="utf-8") as f:
-        json.dump(items, f, ensure_ascii=False, indent=2)
-    with open(JS_PATH, "w", encoding="utf-8") as f:
-        f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(items, ensure_ascii=False, indent=2) + ";\n")
+    with SYNC_LOCK:
+        with open(JSON_PATH, "w", encoding="utf-8") as f:
+            json.dump(items, f, ensure_ascii=False, indent=2)
+        with open(JS_PATH, "w", encoding="utf-8") as f:
+            f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(items, ensure_ascii=False, indent=2) + ";\n")
 
 def sync_to_github_via_api(path: str, content_bytes: bytes, commit_msg: str, token: str, repo: str = "fujitomo1123581321-byte/task-radar"):
     """Update file in GitHub repo directly using GitHub REST API (No git CLI required in cloud)"""
@@ -149,45 +187,46 @@ def sync_to_github_via_api(path: str, content_bytes: bytes, commit_msg: str, tok
 
 def git_push_sync(commit_msg="Update assignments via Discord Bot"):
     """Dual-mode sync: GitHub API (Cloud) or Git Subprocess (Local)"""
-    gh_token = CONFIG.get("github_token") or os.environ.get("GITHUB_TOKEN")
-    
-    if gh_token:
-        try:
-            with open(JSON_PATH, "rb") as f:
-                json_bytes = f.read()
-            with open(JS_PATH, "rb") as f:
-                js_bytes = f.read()
+    with SYNC_LOCK:
+        gh_token = CONFIG.get("github_token") or os.environ.get("GITHUB_TOKEN")
+        
+        if gh_token:
+            try:
+                with open(JSON_PATH, "rb") as f:
+                    json_bytes = f.read()
+                with open(JS_PATH, "rb") as f:
+                    js_bytes = f.read()
 
-            sync_to_github_via_api("assignments.json", json_bytes, commit_msg, gh_token)
-            time.sleep(0.5)
-            sync_to_github_via_api("assignments.js", js_bytes, commit_msg, gh_token)
-
-            if os.path.exists(IGNORED_PATH):
-                with open(IGNORED_PATH, "rb") as f:
-                    ign_bytes = f.read()
+                sync_to_github_via_api("assignments.json", json_bytes, commit_msg, gh_token)
                 time.sleep(0.5)
-                sync_to_github_via_api("ignored_titles.json", ign_bytes, commit_msg, gh_token)
+                sync_to_github_via_api("assignments.js", js_bytes, commit_msg, gh_token)
 
-            print(f"[Cloud Git Sync] Pushed to GitHub via API: {commit_msg}")
-            return True
+                if os.path.exists(IGNORED_PATH):
+                    with open(IGNORED_PATH, "rb") as f:
+                        ign_bytes = f.read()
+                    time.sleep(0.5)
+                    sync_to_github_via_api("ignored_titles.json", ign_bytes, commit_msg, gh_token)
+
+                print(f"[Cloud Git Sync] Pushed to GitHub via API: {commit_msg}")
+                return True
+            except Exception as e:
+                print(f"[Cloud Git Sync Warning] API sync failed, trying local git: {e}")
+
+        try:
+            files = ["assignments.json", "assignments.js"]
+            if os.path.exists(IGNORED_PATH):
+                files.append("ignored_titles.json")
+            subprocess.run(["git", "add"] + files, cwd=BASE_DIR, check=True, capture_output=True)
+            status = subprocess.run(["git", "status", "--porcelain"] + files, cwd=BASE_DIR, capture_output=True, text=True)
+            if any(f in status.stdout for f in files):
+                subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, check=True, capture_output=True)
+                subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, check=True, capture_output=True)
+                print(f"[Local Git Sync] Successfully pushed to GitHub: {commit_msg}")
+                return True
+            return False
         except Exception as e:
-            print(f"[Cloud Git Sync Warning] API sync failed, trying local git: {e}")
-
-    try:
-        files = ["assignments.json", "assignments.js"]
-        if os.path.exists(IGNORED_PATH):
-            files.append("ignored_titles.json")
-        subprocess.run(["git", "add"] + files, cwd=BASE_DIR, check=True, capture_output=True)
-        status = subprocess.run(["git", "status", "--porcelain"] + files, cwd=BASE_DIR, capture_output=True, text=True)
-        if any(f in status.stdout for f in files):
-            subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, check=True, capture_output=True)
-            subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, check=True, capture_output=True)
-            print(f"[Local Git Sync] Successfully pushed to GitHub: {commit_msg}")
-            return True
-        return False
-    except Exception as e:
-        print(f"[Git Sync Notice] {e}")
-        return False
+            print(f"[Git Sync Notice] {e}")
+            return False
 
 # -------------------------------------------------------------
 # Session Management
@@ -214,12 +253,9 @@ def clear_user_session(user_id: int):
 # Gemini AI Engine with Dynamic Fallback
 # -------------------------------------------------------------
 GEMINI_MODELS = [
-    "gemini-flash-lite-latest",  # 常に最新の超高速Flash-Lite（最優先・即答特化）
-    "gemini-3.5-flash-lite",     # 最新3.5世代の超高速Flash-Lite ⚡️
-    "gemini-3.1-flash-lite",     # 3.1 Flash-Lite
-    "gemini-2.5-flash-lite",     # 安定版2.5 Flash-Lite
-    "gemini-flash-latest",       # 最新Flash標準
-    "gemini-2.5-flash"           # 2.5 Flash標準
+    "gemini-2.0-flash",       # 最新最速の標準モデル
+    "gemini-1.5-flash",       # 実績ある高安定Flashモデル
+    "gemini-1.5-flash-8b",    # 軽量高スループットモデル
 ]
 
 def call_gemini(prompt: str, api_key: str):
@@ -235,16 +271,25 @@ def call_gemini(prompt: str, api_key: str):
     for model_name in GEMINI_MODELS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-        timeout = 5 if "lite" in model_name else 8
+        timeout = 5 if "8b" in model_name else 8
         try:
             with urllib.request.urlopen(req, timeout=timeout) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
-                text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-                return text, model_name
+                candidates = res_data.get("candidates", [])
+                if not candidates:
+                    continue
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if not parts:
+                    continue
+                text = parts[0].get("text", "")
+                if text:
+                    return text, model_name
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="ignore")
             print(f"[Gemini Fallback] Model {model_name} HTTP {e.code}: {err_body[:80]}")
             last_error = f"{model_name} (HTTP {e.code})"
+            if e.code == 429:
+                time.sleep(1)
             continue
         except Exception as e:
             print(f"[Gemini Fallback] Model {model_name} Error: {e}")
@@ -1035,18 +1080,18 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
 
 def start_health_server():
     port = int(os.environ.get("PORT", 10000))
-    server = http.server.HTTPServer(("0.0.0.0", port), HealthHandler)
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", port), HealthHandler)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    print(f"🌐 [Cloud Server] Health check listener active on 0.0.0.0:{port}")
+    print(f"🌐 [Cloud Server] Multi-threaded health check listener active on 0.0.0.0:{port}")
 
 def start_self_ping():
-    """Background keep-alive daemon: pings public health endpoint every 8 min to prevent 15-min free tier spin-down"""
+    """Background keep-alive daemon: pings public health endpoint every 5 min to prevent 15-min free tier spin-down"""
     def _ping_loop():
         time.sleep(45)  # Wait for startup to complete
         app_url = os.environ.get("RENDER_EXTERNAL_URL") or "https://task-radar-us.onrender.com"
         ping_target = f"{app_url.rstrip('/')}/health"
-        print(f"🔄 [Keep-Alive Engine] Active self-ping configured for {ping_target} (every 8 min)")
+        print(f"🔄 [Keep-Alive Engine] Active self-ping configured for {ping_target} (every 5 min)")
 
         while True:
             try:
@@ -1059,7 +1104,7 @@ def start_self_ping():
                         pass
             except Exception as e:
                 print(f"[Keep-Alive Engine Notice] Ping attempt: {e}")
-            time.sleep(480)  # 8 minutes
+            time.sleep(300)  # 5 minutes
 
     t = threading.Thread(target=_ping_loop, daemon=True)
     t.start()

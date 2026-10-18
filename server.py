@@ -73,7 +73,10 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         if self.path == "/api/assignments":
-            content_length = int(self.headers.get("Content-Length", 0))
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+            except (ValueError, TypeError):
+                content_length = 0
             body = self.rfile.read(content_length).decode("utf-8")
             try:
                 data = json.loads(body)
@@ -101,7 +104,10 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
             return
         if self.path == "/api/config":
-            content_length = int(self.headers.get("Content-Length", 0))
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+            except (ValueError, TypeError):
+                content_length = 0
             body = self.rfile.read(content_length).decode("utf-8")
             try:
                 data = json.loads(body)
@@ -132,12 +138,17 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
+            return
+
         if self.path == "/api/ignore":
-            content_length = int(self.headers.get("Content-Length", 0))
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+            except (ValueError, TypeError):
+                content_length = 0
             body = self.rfile.read(content_length).decode("utf-8")
             try:
                 data = json.loads(body)
-                title = data.get("title", "").strip()
+                title = data.get("title", "").strip() if isinstance(data, dict) else ""
                 if title:
                     cfg_path = os.path.join(BASE_DIR, "config.json")
                     cfg = {}
@@ -174,6 +185,8 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
+            return
+
         if self.path == "/api/scan-submissions":
             try:
                 import scan_letus_status
@@ -190,7 +203,14 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
             return
-        return super().do_POST()
+
+        # Handle unknown POST cleanly with 404 (SimpleHTTPRequestHandler has no do_POST)
+        self.send_response(404)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(json.dumps({"status": "error", "message": "Not found"}).encode("utf-8"))
+        return
 
 if __name__ == "__main__":
     local_ip = get_local_ip()

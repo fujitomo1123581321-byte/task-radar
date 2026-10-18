@@ -104,20 +104,31 @@ def parse_ics_datetime(dt_str):
     is_utc = dt_str.endswith('Z')
     clean_str = dt_str.rstrip('Z')
     
-    if len(clean_str) >= 15:
-        y = int(clean_str[0:4])
-        m = int(clean_str[4:6])
-        d = int(clean_str[6:8])
-        hh = int(clean_str[9:11])
-        mm = int(clean_str[11:13])
-        ss = int(clean_str[13:15])
-        
-        if is_utc:
-            utc_dt = datetime(y, m, d, hh, mm, ss, tzinfo=timezone.utc)
-            jst_dt = utc_dt.astimezone(timezone(timedelta(hours=9)))
-            return jst_dt.strftime("%Y-%m-%dT%H:%M:%S")
-        else:
-            return f"{y:04d}-{m:02d}-{d:02d}T{hh:02d}:{mm:02d}:{ss:02d}"
+    try:
+        if len(clean_str) >= 15:
+            y = int(clean_str[0:4])
+            m = int(clean_str[4:6])
+            d = int(clean_str[6:8])
+            hh = int(clean_str[9:11])
+            mm = int(clean_str[11:13])
+            ss = int(clean_str[13:15])
+            
+            if is_utc:
+                utc_dt = datetime(y, m, d, hh, mm, ss, tzinfo=timezone.utc)
+                jst_dt = utc_dt.astimezone(timezone(timedelta(hours=9)))
+                return jst_dt.strftime("%Y-%m-%dT%H:%M:%S")
+            else:
+                return f"{y:04d}-{m:02d}-{d:02d}T{hh:02d}:{mm:02d}:{ss:02d}"
+        elif len(clean_str) == 8 and clean_str.isdigit():
+            # All-day event (YYYYMMDD) -> default to 23:59:00 JST
+            y = int(clean_str[0:4])
+            m = int(clean_str[4:6])
+            d = int(clean_str[6:8])
+            # Validate valid month/day
+            datetime(y, m, d)
+            return f"{y:04d}-{m:02d}-{d:02d}T23:59:00"
+    except (ValueError, OverflowError):
+        return None
     return None
 
 def resolve_subject(category_str, summary_str, desc_str):
@@ -180,14 +191,17 @@ def fetch_and_sync():
         except Exception:
             existing = []
 
+    # RFC 5545 Unfolding: merge multi-line folded fields
+    ics_text = re.sub(r"\r?\n[ \t]", "", ics_text)
     events = ics_text.split("BEGIN:VEVENT")
     new_items = []
     updated_count = 0
-    now = datetime.now()
+    # Always use JST for consistent deadline comparison across all platforms (Windows / GitHub Actions)
+    now = datetime.now(timezone(timedelta(hours=9))).replace(tzinfo=None)
 
     for ev in events[1:]:
         summary_m = re.search(r"SUMMARY:(.+)", ev)
-        dtend_m = re.search(r"DTEND(?:;[^:]+)?:(\d{8}T\d{6}Z?|\d{8})", ev)
+        dtend_m = re.search(r"DTEND(?:;[^:]+)?:(\d{8}T\d{6}Z?|\d{8})", ev) or re.search(r"DTSTART(?:;[^:]+)?:(\d{8}T\d{6}Z?|\d{8})", ev)
         desc_m = re.search(r"DESCRIPTION:(.+)", ev)
         cat_m = re.search(r"CATEGORIES:(.+)", ev)
         uid_m = re.search(r"UID:(.+)", ev)
@@ -229,10 +243,16 @@ def fetch_and_sync():
         # Check if already in list
         found = False
         for item in existing:
-            # Match by UID or normalized title
+            # Match strictly by UID or (same title AND same subject)
             item_uid = item.get("moodleUid", "").strip() if item.get("moodleUid") else ""
             item_title = item.get("title", "").strip() if item.get("title") else ""
-            if (uid and item_uid == uid) or (item_title == title.strip() and item.get("category") == "academic"):
+            is_same_uid = bool(uid and item_uid and item_uid == uid)
+            is_same_task = (
+                item.get("category") == "academic"
+                and item_title == title.strip()
+                and (item.get("subject") == subject or item.get("subject") == "学業")
+            )
+            if is_same_uid or is_same_task:
                 found = True
                 # If subject was generic "学業", upgrade it
                 if item.get("subject") == "学業" and subject != "学業":
