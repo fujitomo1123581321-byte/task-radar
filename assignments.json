@@ -579,5 +579,19 @@
     "folderPath": null,
     "createdAt": "2026-10-19T00:54:06.827625+09:00",
     "completedAt": null
+  },
+  {
+    "id": "custom-20261019005433",
+    "category": "personal",
+    "subject": "個人",
+    "title": "三門チェンソー買う？",
+    "deadline": "2026-10-25T23:59:59",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "今週中",
+    "folderPath": null,
+    "createdAt": "2026-10-19T00:54:33.721340+09:00",
+    "completedAt": null
   }
 ]
