@@ -79,15 +79,18 @@ def notify_discord(webhook_url, title, items):
                 "inline": False
             })
 
-        is_emergency = any(a.get("total_seconds", 999999) <= 24 * 3600 for a in items)
-        embed_color = 0xEF4444 if is_emergency else 0xF59E0B # Red or Amber
+        is_overdue = any(a.get("total_seconds", 1) <= 0 for a in items)
+        is_emergency = any(0 < a.get("total_seconds", 999999) <= 24 * 3600 for a in items)
+        embed_color = 0x991B1B if is_overdue else (0xEF4444 if is_emergency else 0xF59E0B) # Deep red for overdue, red for emergency, amber for 3d
+
+        description = "⚠️ **以下の課題・タスクは既に提出期限を過ぎています！**\n提出済みならダッシュボードで完了にし、未提出なら至急確認してください。\n🔗 [LETUSカレンダーを開く](https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming)" if is_overdue else "未提出の課題・タスク一覧です。提出はお早めに！\n🔗 [LETUSカレンダーを開く](https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming)"
 
         payload = {
             "username": "🎯 課題・タスク提出期限レーダー",
             "avatar_url": "https://cdn-icons-png.flaticon.com/512/2921/2921222.png",
             "embeds": [{
                 "title": title,
-                "description": "未提出の課題・タスク一覧です。提出はお早めに！\n🔗 [LETUSカレンダーを開く](https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming)",
+                "description": description,
                 "color": embed_color,
                 "fields": fields,
                 "footer": {
@@ -138,6 +141,7 @@ def check_and_notify():
 
     urgent_24h = []
     urgent_3d = []
+    overdue = []
 
     for a in assignments:
         if a.get("status") == "submitted":
@@ -157,6 +161,10 @@ def check_and_notify():
 
         if total_seconds <= 0:
             # Overdue but unsubmitted
+            days_ago = abs(int(total_seconds // 86400))
+            a["remaining_text"] = f"⚠️ {days_ago}日前に締切超過" if days_ago > 0 else "⚠️ 本日締切超過"
+            a["total_seconds"] = total_seconds
+            overdue.append(a)
             continue
 
         days = int(total_seconds // 86400)
@@ -176,10 +184,16 @@ def check_and_notify():
         elif total_seconds <= 3 * 24 * 3600:
             urgent_3d.append(a)
 
-    print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] 締切チェック結果: 24時間以内 {len(urgent_24h)}件, 3日以内 {len(urgent_3d)}件")
+    print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] 締切チェック結果: 期限超過 {len(overdue)}件, 24時間以内 {len(urgent_24h)}件, 3日以内 {len(urgent_3d)}件")
 
     # 1. Windows PC Toast Notification
-    if urgent_24h:
+    if overdue:
+        first = overdue[0]
+        title = f"🚨【期限超過の未完了課題】{len(overdue)}件が締切を過ぎています"
+        msg = f"「{first.get('subject')}: {first.get('title')}」 ({first.get('remaining_text')})"
+        print(f"  [PC通知] {title} - {msg}")
+        notify_windows(title, msg)
+    elif urgent_24h:
         first = urgent_24h[0]
         title = f"🚨【提出期限が迫っています】あと{len(urgent_24h)}件が24時間以内！"
         msg = f"「{first.get('subject')}: {first.get('title')}」 ({first.get('remaining_text')})"
@@ -197,6 +211,8 @@ def check_and_notify():
     # 2. Discord / Smartphone Notification (if webhook URL configured)
     discord_url = config.get("discord_webhook_url", "").strip()
     if discord_url:
+        if overdue:
+            notify_discord(discord_url, f"🚨【提出期限超過】未提出の課題・タスクが {len(overdue)} 件あります！", overdue)
         if urgent_24h:
             notify_discord(discord_url, "🚨【提出期限アラート】24時間以内に締切の課題があります！", urgent_24h)
         elif urgent_3d:

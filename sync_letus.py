@@ -216,9 +216,11 @@ def fetch_and_sync():
                 break
 
         if not found:
-            # Check deadline vs now: if already expired by more than 7 days, mark submitted or skip
+            # Check deadline vs now
+            # Only consider ancient archived tasks (> 14 days in past) as submitted.
+            # Recent overdue tasks (< 14 days past) stay not_started so student never misses them!
             dl_dt = datetime.strptime(deadline, "%Y-%m-%dT%H:%M:%S")
-            is_past = dl_dt < now
+            is_ancient = dl_dt < (now - timedelta(days=14))
 
             new_item = {
                 "id": "letus-" + datetime.now().strftime("%Y%m%d%H%M%S") + f"-{len(new_items)}",
@@ -227,12 +229,12 @@ def fetch_and_sync():
                 "title": title,
                 "deadline": deadline,
                 "submissionMethod": "LETUS",
-                "status": "submitted" if is_past else "not_started",
+                "status": "submitted" if is_ancient else "not_started",
                 "priority": "high" if "テスト" in title or "レポート" in title else "medium",
                 "memo": raw_desc[:200] if raw_desc else "LETUSより自動同期",
                 "folderPath": None,
                 "createdAt": datetime.now().isoformat(),
-                "completedAt": datetime.now().isoformat() if is_past else None,
+                "completedAt": datetime.now().isoformat() if is_ancient else None,
                 "moodleUid": uid
             }
             new_items.append(new_item)

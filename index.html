@@ -216,9 +216,12 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <div class="mt-1.5 sm:mt-2 flex items-baseline gap-1.5">
+        <div class="mt-1.5 sm:mt-2 flex items-baseline gap-1.5 flex-wrap">
           <span class="text-2xl sm:text-3xl font-extrabold text-white" id="statTotalPending">0</span>
           <span class="text-xs text-slate-400">件</span>
+          <span id="statOverdueBadge" class="hidden ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 rounded-full animate-pulse-fast">
+            超過 <span id="statOverdueCount">0</span>
+          </span>
         </div>
         <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">進行中・未着手</p>
       </div>
@@ -287,6 +290,17 @@
             <option value="subjectAsc">科目・カテゴリ順</option>
             <option value="createdDesc">追加が新しい順</option>
           </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- OVERDUE ALERT BANNER -->
+    <div id="overdueAlertBanner" class="hidden p-3 sm:p-4 bg-gradient-to-r from-rose-950/80 via-rose-900/40 to-slate-800/80 border border-rose-500/50 rounded-xl text-xs sm:text-sm text-rose-200 flex items-center justify-between gap-3 shadow-lg backdrop-blur">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl shrink-0 animate-pulse-fast">🚨</span>
+        <div>
+          <span class="font-bold text-rose-300">提出期限を過ぎている未完了課題が <span id="overdueCountText" class="text-white underline font-extrabold">0</span> 件あります！</span>
+          <p class="text-[11px] text-rose-300/80 mt-0.5">提出済みなら「✅ 提出完了」、自分に関係なければ「🚫 除外」を押してください。</p>
         </div>
       </div>
     </div>
@@ -1256,11 +1270,13 @@
       let urgent3dCount = 0;
       let pendingCount = 0;
       let completedCount = 0;
+      let overdueCount = 0;
 
       pool.forEach(a => {
         const diffMs = new Date(a.deadline) - now;
         if (a.status !== 'submitted') {
           pendingCount++;
+          if (diffMs <= 0) overdueCount++;
           if (diffMs > 0 && diffMs <= 24 * 3600 * 1000) urgent24hCount++;
           if (diffMs > 0 && diffMs <= 3 * 24 * 3600 * 1000) urgent3dCount++;
         } else {
@@ -1272,6 +1288,26 @@
       document.getElementById('statUrgent3d').textContent = urgent3dCount;
       document.getElementById('statTotalPending').textContent = pendingCount;
       document.getElementById('statCompleted').textContent = completedCount;
+
+      const overdueBadge = document.getElementById('statOverdueBadge');
+      if (overdueBadge) {
+        if (overdueCount > 0) {
+          overdueBadge.classList.remove('hidden');
+          document.getElementById('statOverdueCount').textContent = overdueCount;
+        } else {
+          overdueBadge.classList.add('hidden');
+        }
+      }
+
+      const overdueBanner = document.getElementById('overdueAlertBanner');
+      if (overdueBanner) {
+        if (overdueCount > 0 && currentTab !== 'completed') {
+          overdueBanner.classList.remove('hidden');
+          document.getElementById('overdueCountText').textContent = overdueCount;
+        } else {
+          overdueBanner.classList.add('hidden');
+        }
+      }
 
       document.getElementById('countTabActive').textContent = pendingCount;
       document.getElementById('countTabUrgent').textContent = urgent3dCount;
