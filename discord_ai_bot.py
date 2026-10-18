@@ -253,9 +253,11 @@ def clear_user_session(user_id: int):
 # Gemini AI Engine with Dynamic Fallback
 # -------------------------------------------------------------
 GEMINI_MODELS = [
-    "gemini-2.0-flash",       # 最新最速の標準モデル
-    "gemini-1.5-flash",       # 実績ある高安定Flashモデル
-    "gemini-1.5-flash-8b",    # 軽量高スループットモデル
+    "gemini-2.5-flash-lite",   # 🥇 最優先: 0.70秒の超高速即答モデル
+    "gemini-2.5-flash",        # 🥈 第2候補: 0.77秒の高精度・安定標準モデル
+    "gemini-3.5-flash",        # 🥉 第3候補: 1.44秒の最新世代インテリジェントモデル
+    "gemini-3-flash-preview",  # 🏅 第4候補: 第3世代プレビュー
+    "gemini-flash-latest",     # 🛡️ 最終フォールバック
 ]
 
 def call_gemini(prompt: str, api_key: str):
