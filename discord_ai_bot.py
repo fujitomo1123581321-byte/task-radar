@@ -88,40 +88,45 @@ def sync_to_github_via_api(path: str, content_bytes: bytes, commit_msg: str, tok
         "User-Agent": "TaskRadarCloudBot",
         "Accept": "application/vnd.github.v3+json"
     }
-    sha = None
-    try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=8) as res:
-            data = json.loads(res.read().decode("utf-8"))
-            sha = data.get("sha")
-    except urllib.error.HTTPError as e:
-        if e.code != 404:
-            print(f"[GitHub API GET Warning] {path} HTTP {e.code}: {e.read().decode('utf-8', errors='ignore')[:100]}")
-    except Exception as e:
-        print(f"[GitHub API GET Warning] {path} error: {e}")
+    for attempt in range(3):
+        sha = None
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=8) as res:
+                data = json.loads(res.read().decode("utf-8"))
+                sha = data.get("sha")
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                print(f"[GitHub API GET Warning] {path} HTTP {e.code}: {e.read().decode('utf-8', errors='ignore')[:100]}")
+        except Exception as e:
+            print(f"[GitHub API GET Warning] {path} error: {e}")
 
-    payload = {
-        "message": commit_msg,
-        "content": base64.b64encode(content_bytes).decode("utf-8")
-    }
-    if sha:
-        payload["sha"] = sha
+        payload = {
+            "message": commit_msg,
+            "content": base64.b64encode(content_bytes).decode("utf-8")
+        }
+        if sha:
+            payload["sha"] = sha
 
-    put_req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers=headers,
-        method="PUT"
-    )
-    try:
-        with urllib.request.urlopen(put_req, timeout=10) as res:
-            return res.status in (200, 201)
-    except urllib.error.HTTPError as e:
-        print(f"[GitHub API PUT Error] {path} HTTP {e.code}: {e.read().decode('utf-8', errors='ignore')[:100]}")
-        return False
-    except Exception as e:
-        print(f"[GitHub API PUT Error] {path} error: {e}")
-        return False
+        put_req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="PUT"
+        )
+        try:
+            with urllib.request.urlopen(put_req, timeout=10) as res:
+                return res.status in (200, 201)
+        except urllib.error.HTTPError as e:
+            print(f"[GitHub API PUT Error] {path} HTTP {e.code} (attempt {attempt+1}): {e.read().decode('utf-8', errors='ignore')[:100]}")
+            if e.code == 409 and attempt < 2:
+                time.sleep(1.0)
+                continue
+            return False
+        except Exception as e:
+            print(f"[GitHub API PUT Error] {path} error: {e}")
+            return False
+    return False
 
 def git_push_sync(commit_msg="Update assignments via Discord Bot"):
     """Dual-mode sync: GitHub API (Cloud) or Git Subprocess (Local)"""
