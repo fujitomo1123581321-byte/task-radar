@@ -564,5 +564,18 @@
     "folderPath": null,
     "createdAt": "2026-10-19T00:54:06.827625+09:00",
     "completedAt": null
+  },
+  {
+    "id": "task-1792341242235",
+    "category": "academic",
+    "subject": "08実験",
+    "title": "自動テスト課題_1792341242",
+    "deadline": "2026-10-31T23:59",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "Playwright 自動テスト作成メモ",
+    "createdAt": "2026-10-18T16:34:02.235Z",
+    "completedAt": null
   }
 ]
