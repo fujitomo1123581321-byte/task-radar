@@ -877,6 +877,9 @@
       // Check if server has updated assignments immediately
       refreshFromServer(false);
       setInterval(() => refreshFromServer(false), 20000);
+
+      // Ping Cloud Bot in background on dashboard load to wake it up if sleeping
+      fetch(`${CLOUD_SYNC_BASE}/health`, { cache: 'no-store' }).catch(() => {});
     }
 
     // --- MANUAL SYNC TRIGGER ---

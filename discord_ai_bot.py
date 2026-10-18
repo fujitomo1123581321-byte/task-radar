@@ -887,6 +887,30 @@ def start_health_server():
     t.start()
     print(f"🌐 [Cloud Server] Health check listener active on 0.0.0.0:{port}")
 
+def start_self_ping():
+    """Background keep-alive daemon: pings public health endpoint every 8 min to prevent 15-min free tier spin-down"""
+    def _ping_loop():
+        time.sleep(45)  # Wait for startup to complete
+        app_url = os.environ.get("RENDER_EXTERNAL_URL") or "https://task-radar-us.onrender.com"
+        ping_target = f"{app_url.rstrip('/')}/health"
+        print(f"🔄 [Keep-Alive Engine] Active self-ping configured for {ping_target} (every 8 min)")
+
+        while True:
+            try:
+                req = urllib.request.Request(
+                    ping_target,
+                    headers={"User-Agent": "TaskRadarInternalKeepAlive/1.0"}
+                )
+                with urllib.request.urlopen(req, timeout=20) as res:
+                    if res.status == 200:
+                        pass
+            except Exception as e:
+                print(f"[Keep-Alive Engine Notice] Ping attempt: {e}")
+            time.sleep(480)  # 8 minutes
+
+    t = threading.Thread(target=_ping_loop, daemon=True)
+    t.start()
+
 # -------------------------------------------------------------
 # Main Runner
 # -------------------------------------------------------------
@@ -899,7 +923,10 @@ def main():
     # 1. Start background web server for Render port check
     start_health_server()
 
-    # 2. Run standard Discord Bot (discord.py manages event loop & automatic backoff)
+    # 2. Start internal keep-alive engine (pings public URL every 8 min to prevent sleep)
+    start_self_ping()
+
+    # 3. Run standard Discord Bot (discord.py manages event loop & automatic backoff)
     print("Starting Discord AI Bot with standard bot.run()...")
     bot.run(token)
 
