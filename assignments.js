@@ -552,21 +552,6 @@ window.INITIAL_ASSIGNMENTS = [
     "moodleUid": "638961@letus.ed.tus.ac.jp"
   },
   {
-    "id": "letus-20261017124642-0",
-    "category": "academic",
-    "subject": "08実験",
-    "title": "実験④(R) 前組",
-    "deadline": "2026-10-16T23:59:00",
-    "submissionMethod": "LETUS",
-    "status": "submitted",
-    "priority": "medium",
-    "memo": "LETUSより自動同期",
-    "folderPath": null,
-    "createdAt": "2026-10-17T12:46:42.250191",
-    "completedAt": "2026-10-17T12:46:42.250194",
-    "moodleUid": "577521@letus.ed.tus.ac.jp"
-  },
-  {
     "id": "custom-20261019005406",
     "category": "personal",
     "subject": "個人",
