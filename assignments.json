@@ -593,5 +593,19 @@
     "folderPath": null,
     "createdAt": "2026-10-19T00:54:33.721340+09:00",
     "completedAt": null
+  },
+  {
+    "id": "custom-20261019005454",
+    "category": "personal",
+    "subject": "個人",
+    "title": "蒼空　Σ70mm買う",
+    "deadline": "2026-10-23T23:59:59",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "Discordより登録",
+    "folderPath": null,
+    "createdAt": "2026-10-19T00:54:54.896848+09:00",
+    "completedAt": null
   }
 ]
