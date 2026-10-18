@@ -6,12 +6,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "学生証・通学定期券の更新／証明書発行",
     "deadline": "2026-10-18T18:00:00",
     "submissionMethod": "窓口 / オンライン",
-    "status": "in_progress",
+    "status": "submitted",
     "priority": "medium",
     "memo": "期限前に忘れずに手続きする",
     "folderPath": null,
     "createdAt": "2026-10-14T20:00:00",
-    "completedAt": null
+    "completedAt": "2026-10-18T18:00:00+09:00"
   },
   {
     "id": "letus-20261014203253-0",
@@ -529,12 +529,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "プラネ原稿を覚える",
     "deadline": "2026-10-17T12:00:00",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "できれば金曜中に完了したい",
     "folderPath": null,
     "createdAt": "2026-10-16T01:26:47.910161+09:00",
-    "completedAt": null
+    "completedAt": "2026-10-17T12:00:00+09:00"
   },
   {
     "id": "letus-20261017071528-0",

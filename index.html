@@ -769,8 +769,14 @@
       } catch (_) {}
 
       return items.filter(a => {
-        if (a.id && deletedIds.includes(String(a.id))) return false;
-        if (a.title && ignoredTitles.includes(a.title)) return false;
+        if (a.id && deletedIds.includes(String(a.id))) {
+          if (typeof throttledCloudDeleteSync === 'function') throttledCloudDeleteSync(a.id, a.title);
+          return false;
+        }
+        if (a.title && ignoredTitles.includes(a.title)) {
+          if (typeof throttledCloudIgnoreSync === 'function') throttledCloudIgnoreSync(a.title, a.id);
+          return false;
+        }
         return true;
       });
     }
@@ -974,6 +980,9 @@
 
                 if (isRegisteredDone || (localItem && localItem.status === 'submitted')) {
                   // If completed, NEVER let older server data revert it back!
+                  if (serverItem.status !== 'submitted' && typeof throttledCloudStatusSync === 'function') {
+                    throttledCloudStatusSync(serverItem.id, 'submitted', serverItem.title);
+                  }
                   return { ...serverItem, status: 'submitted', completedAt: (localItem && localItem.completedAt) || serverItem.completedAt || new Date().toISOString() };
                 }
                 if (localItem) {
@@ -1514,6 +1523,37 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: title, id: taskId })
       }).catch(() => {});
+    }
+
+    const _lastSyncedCloudTimes = new Map();
+    function throttledCloudStatusSync(id, status, title) {
+      if (!id) return;
+      const key = `status_${id}_${status}`;
+      const now = Date.now();
+      if (now - (_lastSyncedCloudTimes.get(key) || 0) > 60000) {
+        _lastSyncedCloudTimes.set(key, now);
+        syncStatusToCloud(id, status, title);
+      }
+    }
+
+    function throttledCloudDeleteSync(id, title) {
+      if (!id) return;
+      const key = `delete_${id}`;
+      const now = Date.now();
+      if (now - (_lastSyncedCloudTimes.get(key) || 0) > 60000) {
+        _lastSyncedCloudTimes.set(key, now);
+        syncDeleteToCloud(id, title);
+      }
+    }
+
+    function throttledCloudIgnoreSync(title, id) {
+      if (!title) return;
+      const key = `ignore_${title}`;
+      const now = Date.now();
+      if (now - (_lastSyncedCloudTimes.get(key) || 0) > 60000) {
+        _lastSyncedCloudTimes.set(key, now);
+        syncIgnoreToCloud(title, id);
+      }
     }
 
     // --- ACTIONS ---
