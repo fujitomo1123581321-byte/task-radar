@@ -565,5 +565,19 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-17T12:46:42.250191",
     "completedAt": "2026-10-17T12:46:42.250194",
     "moodleUid": "577521@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "custom-20261019005406",
+    "category": "personal",
+    "subject": "個人",
+    "title": "ダグバ試す、ダミバ試す",
+    "deadline": "2026-10-25T23:59:59",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "今週中",
+    "folderPath": null,
+    "createdAt": "2026-10-19T00:54:06.827625+09:00",
+    "completedAt": null
   }
 ];
