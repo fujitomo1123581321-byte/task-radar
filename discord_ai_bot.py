@@ -372,6 +372,13 @@ def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
             "deadline": t.get("deadline")
         })
 
+    completed = [a for a in assignments if a.get("status") == "submitted"]
+    completed.sort(key=lambda x: x.get("completedAt") or x.get("deadline") or "", reverse=True)
+    recent_completed_summary = [
+        {"subject": c.get("subject"), "title": c.get("title"), "completedAt": c.get("completedAt")}
+        for c in completed[:6]
+    ]
+
     prompt = f"""現在は {now_str} です。
 ユーザーは東京理科大学の学生で、学業（LETUS）や個人のタスクを管理しています。
 ユーザーからの発言を自然言語解析し、適切なアクションとスロット（情報）の充足度を判定してください。
@@ -381,6 +388,9 @@ def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
 
 【現在の未完了タスク一覧】:
 {json.dumps(tasks_summary, ensure_ascii=False, indent=2)}
+
+【直近で完了したタスク（最新6件・新しい順）】:
+{json.dumps(recent_completed_summary, ensure_ascii=False, indent=2)}
 
 【タスク追加（add）の対話ルール】:
 - タスクに必要な情報:
@@ -397,7 +407,8 @@ def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
 
 【その他のアクション】:
 - "complete": タスク完了（未完了タスクから一致するIDを特定。ユーザーが複数のタスクに言及している場合は該当するすべてのIDを matched_task_ids 配列に含めること）
-- "list": 残りタスク確認
+- "list": 残りタスク確認（「今のタスク」「課題教えて」など）
+- "completed_list": 完了したタスクの確認（「完了した課題教えて」「最近終わったタスク」など）
 - "sync": LETUS同期
 - "cancel": キャンセル
 - "chat": 質問や雑談
@@ -691,6 +702,39 @@ async def on_message(message: discord.Message):
                     else:
                         await message.reply("🤔 完了にしたいタスクが見つかりませんでした。\n「未完了の課題を教えて」と聞いて名前を確認してみてください！")
 
+                # Handle ACTION: COMPLETED_LIST
+                elif action == "completed_list":
+                    with DATA_LOCK:
+                        assignments = load_assignments()
+                    completed = [a for a in assignments if a.get("status") == "submitted"]
+                    completed.sort(key=lambda x: x.get("completedAt") or x.get("deadline") or "", reverse=True)
+
+                    embed = discord.Embed(title=f"🎉 完了済みの課題・タスク（全 {len(completed)} 件）", color=0x2ecc71)
+                    if not completed:
+                        embed.description = "まだ完了済みのタスクはありません。頑張りましょう！💪"
+                    else:
+                        lines = []
+                        for idx, item in enumerate(completed[:8], 1):
+                            subject = item.get("subject", "一般")
+                            title = item.get("title", "無題")
+                            comp_at = item.get("completedAt")
+                            if comp_at:
+                                try:
+                                    dt = datetime.fromisoformat(comp_at)
+                                    comp_txt = dt.strftime("%m/%d %H:%M 完了")
+                                except Exception:
+                                    comp_txt = "完了済み"
+                            else:
+                                comp_txt = "完了済み"
+                            lines.append(f"**{idx}. [{subject}] {title}**\n   ✅ {comp_txt}")
+
+                        embed.description = "\n\n".join(lines)
+                        if len(completed) > 8:
+                            embed.set_footer(text=f"他 {len(completed) - 8} 件の完了タスクがあります | Webダッシュボードで全件確認可能")
+
+                    embed.add_field(name="🌐 ダッシュボード", value="[Task Radarを開く](https://fujitomo1123581321-byte.github.io/task-radar/)", inline=False)
+                    await message.reply(embed=embed)
+
                 # Handle ACTION: LIST
                 elif action == "list":
                     assignments = load_assignments()
@@ -782,9 +826,40 @@ async def cmd_help(ctx):
         inline=False
     )
     embed.add_field(name="✅ タスクを完了にする", value="・「ミニテスト4終わった」\n・「原稿完了」", inline=False)
-    embed.add_field(name="📋 課題を確認する", value="・「直近の締切教えて」\n・「!list」", inline=False)
+    embed.add_field(name="📋 課題を確認する", value="・「直近の締切教えて」\n・「!list」\n・「完了した課題教えて」または「!done」", inline=False)
     embed.add_field(name="🔄 LETUSを同期する", value="・「LETUS同期して」または「!sync」", inline=False)
     embed.add_field(name="🌐 Webダッシュボード", value="[Task Radarを開く](https://fujitomo1123581321-byte.github.io/task-radar/)", inline=False)
+    await ctx.send(embed=embed)
+
+@bot.command(name="completed", aliases=["done"])
+async def cmd_completed(ctx):
+    with DATA_LOCK:
+        assignments = load_assignments()
+    completed = [a for a in assignments if a.get("status") == "submitted"]
+    completed.sort(key=lambda x: x.get("completedAt") or x.get("deadline") or "", reverse=True)
+
+    embed = discord.Embed(title=f"🎉 直近で完了したタスク一覧（最新 {min(8, len(completed))} 件）", color=0x2ecc71)
+    if not completed:
+        embed.description = "完了したタスクはまだありません。"
+    else:
+        lines = []
+        for idx, item in enumerate(completed[:8], 1):
+            subject = item.get("subject", "一般")
+            title = item.get("title", "無題")
+            comp_at = item.get("completedAt")
+            if comp_at:
+                try:
+                    dt = datetime.fromisoformat(comp_at)
+                    comp_txt = dt.strftime("%m/%d %H:%M 完了")
+                except Exception:
+                    comp_txt = "完了済み"
+            else:
+                comp_txt = "完了済み"
+            lines.append(f"**{idx}. [{subject}] {title}**\n   ✅ {comp_txt}")
+        embed.description = "\n\n".join(lines)
+        if len(completed) > 8:
+            embed.set_footer(text=f"他 {len(completed) - 8} 件の完了タスクがあります")
+    embed.add_field(name="🌐 Webダッシュボード", value="[Task Radar](https://fujitomo1123581321-byte.github.io/task-radar/)", inline=False)
     await ctx.send(embed=embed)
 
 @bot.command(name="list")

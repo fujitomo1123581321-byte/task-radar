@@ -286,6 +286,7 @@
           <span class="text-slate-400">並び順:</span>
           <select id="sortSelect" onchange="renderAssignments()" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-200 text-xs focus:outline-none focus:border-indigo-500">
             <option value="deadlineAsc">締切が近い順 (推奨)</option>
+            <option value="completedDesc">完了が新しい順 (最近完了)</option>
             <option value="priorityDesc">優先度が高い順</option>
             <option value="subjectAsc">科目・カテゴリ順</option>
             <option value="createdDesc">追加が新しい順</option>
@@ -1277,6 +1278,16 @@
 
     function setTab(tab) {
       currentTab = tab;
+      const sortSelect = document.getElementById('sortSelect');
+      if (tab === 'completed') {
+        if (sortSelect && (sortSelect.value === 'deadlineAsc' || sortSelect.value === 'completedDesc')) {
+          sortSelect.value = 'completedDesc';
+        }
+      } else {
+        if (sortSelect && sortSelect.value === 'completedDesc') {
+          sortSelect.value = 'deadlineAsc';
+        }
+      }
       ['tabActive', 'tabUrgent', 'tabAll', 'tabCompleted'].forEach(id => {
         const el = document.getElementById(id);
         el.className = 'px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/60 transition whitespace-nowrap';
@@ -1380,6 +1391,11 @@
 
       // Sorting
       list.sort((a, b) => {
+        if (sortMode === 'completedDesc' || (currentTab === 'completed' && sortMode === 'deadlineAsc')) {
+          const timeB = new Date(b.completedAt || b.deadline || 0).getTime();
+          const timeA = new Date(a.completedAt || a.deadline || 0).getTime();
+          return timeB - timeA;
+        }
         if (sortMode === 'deadlineAsc') return new Date(a.deadline) - new Date(b.deadline);
         if (sortMode === 'priorityDesc') {
           const pMap = { high: 3, medium: 2, low: 1 };
