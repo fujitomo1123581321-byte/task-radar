@@ -591,5 +591,19 @@ window.INITIAL_ASSIGNMENTS = [
     "folderPath": null,
     "createdAt": "2026-10-19T09:52:14.348263+09:00",
     "completedAt": null
+  },
+  {
+    "id": "custom-20261019095304",
+    "category": "personal",
+    "subject": "個人",
+    "title": "チェンソー買う（竹切れるやつ）",
+    "deadline": "2026-10-30T23:59:59",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "high",
+    "memo": "Discordより登録",
+    "folderPath": null,
+    "createdAt": "2026-10-19T09:53:04.963224+09:00",
+    "completedAt": null
   }
 ];
