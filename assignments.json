@@ -627,12 +627,12 @@
     "title": "なぜ中性子は残れるのか？",
     "deadline": "2026-10-19T16:45:00",
     "submissionMethod": "LETUS",
-    "status": "in_progress",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-19T08:11:57.263902",
-    "completedAt": null,
+    "completedAt": "2026-10-19T20:32:01.094199+09:00",
     "moodleUid": "658984@letus.ed.tus.ac.jp"
   },
   {
