@@ -577,5 +577,19 @@ window.INITIAL_ASSIGNMENTS = [
     "memo": "Playwright 自動テスト作成メモ",
     "createdAt": "2026-10-18T16:34:02.235Z",
     "completedAt": null
+  },
+  {
+    "id": "custom-20261019095214",
+    "category": "personal",
+    "subject": "個人",
+    "title": "蒼空　Σ70mm買う",
+    "deadline": "2026-10-23T23:59:59",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "high",
+    "memo": "今週金曜日までに",
+    "folderPath": null,
+    "createdAt": "2026-10-19T09:52:14.348263+09:00",
+    "completedAt": null
   }
 ];
