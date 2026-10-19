@@ -642,12 +642,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "授業中の問題３β崩壊するのはどっち？",
     "deadline": "2026-10-19T17:29:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-19T08:11:57.263989",
-    "completedAt": null,
+    "completedAt": "2026-10-19T20:32:03.405824+09:00",
     "moodleUid": "650218@letus.ed.tus.ac.jp"
   },
   {
