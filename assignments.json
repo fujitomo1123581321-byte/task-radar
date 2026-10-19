@@ -558,12 +558,12 @@
     "title": "ダグバ試す、ダミバ試す",
     "deadline": "2026-10-25T23:59:59",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "今週中",
     "folderPath": null,
     "createdAt": "2026-10-19T00:54:06.827625+09:00",
-    "completedAt": null
+    "completedAt": "2026-10-20T08:32:49.920484+09:00"
   },
   {
     "id": "task-1792341242235",
