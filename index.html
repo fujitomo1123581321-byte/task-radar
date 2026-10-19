@@ -708,6 +708,7 @@
 
   <script>
     // --- STATE MANAGEMENT ---
+    const CLOUD_SYNC_BASE = 'https://task-radar-us.onrender.com';
     let assignments = [];
     let mainCategory = 'ALL'; // 'ALL', 'academic', 'personal'
     let currentTab = 'active'; // 'active', 'urgent', 'all', 'completed'
@@ -894,9 +895,29 @@
       renderSubjectFilter();
       renderAssignments();
 
-      // Check if server has updated assignments immediately
+      // Adaptive Auto-refresh: 6s when active tab, 30s when inactive, instant on tab visibility / focus
+      let refreshTimer = null;
+      function scheduleNextRefresh() {
+        if (refreshTimer) clearTimeout(refreshTimer);
+        const interval = (document.visibilityState === 'visible') ? 6000 : 30000;
+        refreshTimer = setTimeout(async () => {
+          await refreshFromServer(false);
+          scheduleNextRefresh();
+        }, interval);
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          refreshFromServer(false);
+          scheduleNextRefresh();
+        }
+      });
+      window.addEventListener('focus', () => {
+        refreshFromServer(false);
+      });
+
       refreshFromServer(false);
-      setInterval(() => refreshFromServer(false), 20000);
+      scheduleNextRefresh();
 
       // Ping Cloud Bot in background on dashboard load to wake it up if sleeping
       fetch(`${CLOUD_SYNC_BASE}/health`, { cache: 'no-store' }).catch(() => {});
@@ -914,17 +935,22 @@
       }
     }
 
-    // --- SERVER AUTO REFRESH (with Smart Local Merge & Ignore Filters) ---
+    // --- SERVER AUTO REFRESH (Fast Render API + Smart Local Merge & Ignore Filters) ---
     async function refreshFromServer(showToastNotice = false) {
-      // Prioritize raw.githubusercontent.com for INSTANT (0-sec lag) updates after Discord bot push
+      // Prioritize Render Cloud API for INSTANT (<200ms) sync from Discord bot, fallback to GitHub
       const endpoints = [
+        `${CLOUD_SYNC_BASE}/api/assignments?_t=` + Date.now(),
         'https://raw.githubusercontent.com/fujitomo1123581321-byte/task-radar/main/assignments.json?_t=' + Date.now(),
         'assignments.json?_t=' + Date.now()
       ];
 
       for (const endpoint of endpoints) {
         try {
-          const res = await fetch(endpoint, { cache: 'no-store' });
+          let fetchOptions = { cache: 'no-store' };
+          if (endpoint.includes(CLOUD_SYNC_BASE) && typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+            fetchOptions.signal = AbortSignal.timeout(3000);
+          }
+          const res = await fetch(endpoint, fetchOptions);
           if (res.ok) {
             const serverData = await res.json();
             if (Array.isArray(serverData) && serverData.length > 0) {
@@ -1495,9 +1521,7 @@
       }).join('');
     }
 
-    // --- CLOUD SYNC HELPER ---
-    const CLOUD_SYNC_BASE = 'https://task-radar-us.onrender.com';
-
+    // --- CLOUD SYNC HELPER (CLOUD_SYNC_BASE is defined globally at top) ---
     function syncStatusToCloud(taskId, status, title = null) {
       if (!taskId) return;
       fetch(`${CLOUD_SYNC_BASE}/api/task-status`, {

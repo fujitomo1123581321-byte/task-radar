@@ -83,7 +83,12 @@ def load_config():
 
 CONFIG = load_config()
 
-SYNC_LOCK = threading.Lock()
+DATA_LOCK = threading.RLock()
+
+# Debounced git push management
+_git_push_timer = None
+_pending_commit_msgs = []
+_git_push_timer_lock = threading.Lock()
 
 def fetch_remote_assignments():
     try:
@@ -94,50 +99,58 @@ def fetch_remote_assignments():
     except Exception:
         return []
 
-def load_assignments():
-    local = []
-    if os.path.exists(JSON_PATH):
-        try:
-            with open(JSON_PATH, "r", encoding="utf-8") as f:
-                local = json.load(f)
-        except Exception:
-            local = []
+def load_assignments(force_remote: bool = False):
+    with DATA_LOCK:
+        local = []
+        if os.path.exists(JSON_PATH):
+            try:
+                with open(JSON_PATH, "r", encoding="utf-8") as f:
+                    local = json.load(f)
+            except Exception:
+                local = []
 
-    remote = fetch_remote_assignments()
-    if not remote:
-        return local
-    if not local:
-        save_assignments(remote)
-        return remote
+        # Local is authoritative during normal runtime to prevent stale CDN overwrites and eliminate read latency
+        if local and not force_remote:
+            return local
 
-    # 2-way Smart Merge: Remote (GitHub Actions/LETUS updates) + Local (user changes)
-    local_map = {str(a.get("id")): a for a in local if a.get("id")}
-    merged = []
-    for r in remote:
-        rid = str(r.get("id"))
-        if rid in local_map:
-            loc = local_map.pop(rid)
-            # Local completion / progress status takes precedence over remote default
-            if loc.get("status") == "submitted":
-                r["status"] = "submitted"
-                r["completedAt"] = loc.get("completedAt") or r.get("completedAt")
-            elif loc.get("status") == "in_progress" and r.get("status") == "not_started":
-                r["status"] = "in_progress"
-            merged.append(r)
-        else:
-            merged.append(r)
-    # Add any user-created tasks that are only on local
-    for loc_item in local_map.values():
-        merged.append(loc_item)
+        # Only fetch remote if local is empty/missing or explicitly forced (e.g., initial startup)
+        remote = fetch_remote_assignments()
+        if not remote:
+            return local
+        if not local:
+            _raw_save_assignments(remote)
+            return remote
 
-    return merged
+        # 2-way Smart Merge: Remote (GitHub Actions/LETUS updates) + Local (user changes)
+        local_map = {str(a.get("id")): a for a in local if a.get("id")}
+        merged = []
+        for r in remote:
+            rid = str(r.get("id"))
+            if rid in local_map:
+                loc = local_map.pop(rid)
+                if loc.get("status") == "submitted":
+                    r["status"] = "submitted"
+                    r["completedAt"] = loc.get("completedAt") or r.get("completedAt")
+                elif loc.get("status") == "in_progress" and r.get("status") == "not_started":
+                    r["status"] = "in_progress"
+                merged.append(r)
+            else:
+                merged.append(r)
+        for loc_item in local_map.values():
+            merged.append(loc_item)
+
+        _raw_save_assignments(merged)
+        return merged
+
+def _raw_save_assignments(items):
+    with open(JSON_PATH, "w", encoding="utf-8") as f:
+        json.dump(items, f, ensure_ascii=False, indent=2)
+    with open(JS_PATH, "w", encoding="utf-8") as f:
+        f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(items, ensure_ascii=False, indent=2) + ";\n")
 
 def save_assignments(items):
-    with SYNC_LOCK:
-        with open(JSON_PATH, "w", encoding="utf-8") as f:
-            json.dump(items, f, ensure_ascii=False, indent=2)
-        with open(JS_PATH, "w", encoding="utf-8") as f:
-            f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(items, ensure_ascii=False, indent=2) + ";\n")
+    with DATA_LOCK:
+        _raw_save_assignments(items)
 
 def sync_to_github_via_api(path: str, content_bytes: bytes, commit_msg: str, token: str, repo: str = "fujitomo1123581321-byte/task-radar"):
     """Update file in GitHub repo directly using GitHub REST API (No git CLI required in cloud)"""
@@ -189,7 +202,7 @@ def sync_to_github_via_api(path: str, content_bytes: bytes, commit_msg: str, tok
 
 def git_push_sync(commit_msg="Update assignments via Discord Bot"):
     """Dual-mode sync: GitHub API (Cloud) or Git Subprocess (Local)"""
-    with SYNC_LOCK:
+    with DATA_LOCK:
         gh_token = CONFIG.get("github_token") or os.environ.get("GITHUB_TOKEN")
         
         if gh_token:
@@ -229,6 +242,37 @@ def git_push_sync(commit_msg="Update assignments via Discord Bot"):
         except Exception as e:
             print(f"[Git Sync Notice] {e}")
             return False
+
+def _execute_debounced_push():
+    global _git_push_timer, _pending_commit_msgs
+    with _git_push_timer_lock:
+        _git_push_timer = None
+        if not _pending_commit_msgs:
+            return
+        msgs = list(dict.fromkeys([m for m in _pending_commit_msgs if m]))
+        _pending_commit_msgs = []
+
+    combined_msg = " ; ".join(msgs)
+    if len(combined_msg) > 130:
+        combined_msg = f"Batch update ({len(msgs)} actions): {msgs[0][:40]}..."
+    print(f"[Debounced Git Sync] Starting bundled push to GitHub: {combined_msg}")
+    threading.Thread(target=git_push_sync, args=(combined_msg,), daemon=True).start()
+
+def schedule_git_push(commit_msg: str, delay: float = 60.0):
+    """Debounce multiple rapid actions into a single GitHub commit after delay seconds"""
+    global _git_push_timer, _pending_commit_msgs
+    with _git_push_timer_lock:
+        if commit_msg:
+            _pending_commit_msgs.append(commit_msg)
+        if _git_push_timer is not None:
+            try:
+                _git_push_timer.cancel()
+            except Exception:
+                pass
+        _git_push_timer = threading.Timer(delay, _execute_debounced_push)
+        _git_push_timer.daemon = True
+        _git_push_timer.start()
+        print(f"[Debounced Git Sync] Queued push in {delay}s: {commit_msg}")
 
 # -------------------------------------------------------------
 # Session Management
@@ -352,7 +396,7 @@ def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
     ※もし「締めは土曜正午だけどできれば金曜中に」と言われたら、締切は土曜正午（2026-10-17T12:00:00）にセットし、memoに「できれば金曜中に完了したい」と記載してください。
 
 【その他のアクション】:
-- "complete": タスク完了（未完了タスクから一致する `matched_task_id` を特定）
+- "complete": タスク完了（未完了タスクから一致するIDを特定。ユーザーが複数のタスクに言及している場合は該当するすべてのIDを matched_task_ids 配列に含めること）
 - "list": 残りタスク確認
 - "sync": LETUS同期
 - "cancel": キャンセル
@@ -372,7 +416,8 @@ def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
     "memo": "詳細メモ（できれば金曜中などの補足があれば記載）"
   }},
   "ask_question": "不足情報がある場合の質問文",
-  "matched_task_id": "completeの場合のID",
+  "matched_task_ids": ["completeの場合のIDリスト（複数可）"],
+  "matched_task_id": "completeの場合の代表ID（単一の場合）",
   "matched_task_title": "completeの場合のタイトル",
   "reply_text": "自然な返信文"
 }}
@@ -433,12 +478,13 @@ class TaskConfirmView(discord.ui.View):
             "completedAt": None
         }
 
-        assignments = load_assignments()
-        assignments.append(new_item)
-        save_assignments(assignments)
+        with DATA_LOCK:
+            assignments = load_assignments()
+            assignments.append(new_item)
+            save_assignments(assignments)
         clear_user_session(self.user_id)
 
-        await loop.run_in_executor(None, git_push_sync, f"Add task via Discord: {title}")
+        schedule_git_push(f"Add task via Discord: {title}", delay=60.0)
 
         try:
             dl_dt = datetime.strptime(dl, "%Y-%m-%dT%H:%M:%S")
@@ -593,35 +639,54 @@ async def on_message(message: discord.Message):
                 # Handle ACTION: COMPLETE
                 elif action == "complete":
                     clear_user_session(user_id)
-                    matched_id = res.get("matched_task_id")
-                    assignments = load_assignments()
-                    target = None
+                    matched_ids = res.get("matched_task_ids") or []
+                    if not matched_ids and res.get("matched_task_id"):
+                        matched_ids = [res.get("matched_task_id")]
 
-                    if matched_id:
-                        for a in assignments:
-                            if a.get("id") == matched_id:
-                                target = a
-                                break
+                    completed_targets = []
+                    with DATA_LOCK:
+                        assignments = load_assignments()
+                        if matched_ids:
+                            for mid in matched_ids:
+                                for a in assignments:
+                                    if str(a.get("id")) == str(mid):
+                                        if a.get("status") != "submitted":
+                                            a["status"] = "submitted"
+                                            a["completedAt"] = datetime.now(JST).isoformat()
+                                            completed_targets.append(a)
+                                        break
 
-                    if not target:
-                        query = res.get("matched_task_title") or clean_content
-                        for a in assignments:
-                            if a.get("status") != "submitted" and (a.get("title") in query or query in a.get("title")):
-                                target = a
-                                break
+                        # Fallback if no target matched via ID: query by title
+                        if not completed_targets:
+                            query = res.get("matched_task_title") or clean_content
+                            for a in assignments:
+                                if a.get("status") != "submitted" and (a.get("title") in query or query in a.get("title")):
+                                    a["status"] = "submitted"
+                                    a["completedAt"] = datetime.now(JST).isoformat()
+                                    completed_targets.append(a)
+                                    break
 
-                    if target:
-                        target["status"] = "submitted"
-                        target["completedAt"] = datetime.now(JST).isoformat()
-                        save_assignments(assignments)
-                        await loop.run_in_executor(None, git_push_sync, f"Complete task via Discord: {target.get('title')}")
+                        if completed_targets:
+                            save_assignments(assignments)
+                            titles = [t.get("title") for t in completed_targets]
+                            schedule_git_push(f"Complete task(s) via Discord: {', '.join(titles)}", delay=60.0)
 
-                        embed = discord.Embed(
-                            title="🎉 タスクを完了にしました！",
-                            description=f"**[{target.get('subject')}]** {target.get('title')}\nお疲れ様でした！",
-                            color=0xf1c40f
-                        )
-                        embed.set_footer(text=f"AI Brain: {model_used} | Webダッシュボードに反映済み")
+                    if completed_targets:
+                        if len(completed_targets) == 1:
+                            target = completed_targets[0]
+                            embed = discord.Embed(
+                                title="🎉 タスクを完了にしました！",
+                                description=f"**[{target.get('subject')}]** {target.get('title')}\nお疲れ様でした！",
+                                color=0xf1c40f
+                            )
+                        else:
+                            items_str = "\n".join([f"• **[{t.get('subject')}]** {t.get('title')}" for t in completed_targets])
+                            embed = discord.Embed(
+                                title=f"🎉 {len(completed_targets)} 件のタスクを一括完了にしました！",
+                                description=f"{items_str}\n\nお疲れ様でした！素晴らしいペースです！👏",
+                                color=0xf1c40f
+                            )
+                        embed.set_footer(text=f"AI Brain: {model_used} | Webダッシュボードに即時反映済み")
                         await message.reply(embed=embed)
                     else:
                         await message.reply("🤔 完了にしたいタスクが見つかりませんでした。\n「未完了の課題を教えて」と聞いて名前を確認してみてください！")
@@ -798,18 +863,38 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        assignments = load_assignments()
+        normalized_path = self.path.split("?")[0].rstrip("/")
+        if normalized_path in ("/api/assignments", "/assignments.json"):
+            with DATA_LOCK:
+                assignments = load_assignments()
+                resp = json.dumps(assignments, ensure_ascii=False).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(resp)))
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
+            self._send_cors()
+            self.end_headers()
+            self.wfile.write(resp)
+            return
+
+        with DATA_LOCK:
+            assignments = load_assignments()
+            count = len(assignments)
+
         data = {
             "status": "online",
             "app": "Task Radar Discord AI Bot",
             "bot_user": bot.user.name if bot.user else "Starting...",
-            "tasks_count": len(assignments),
+            "tasks_count": count,
             "timestamp": datetime.now(JST).isoformat()
         }
         resp = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(resp)))
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self._send_cors()
         self.end_headers()
         self.wfile.write(resp)
@@ -821,58 +906,72 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                 body = self.rfile.read(content_len)
                 payload = json.loads(body.decode("utf-8"))
 
-                task_id = payload.get("id")
-                new_status = payload.get("status")
-                task_title = payload.get("title")
+                # Support single task or batch items
+                items_to_update = payload.get("items")
+                if not items_to_update:
+                    if "id" in payload:
+                        items_to_update = [payload]
+                    else:
+                        items_to_update = []
 
-                if not task_id or not new_status:
+                if not items_to_update:
                     self.send_response(400)
                     self._send_cors()
                     self.end_headers()
-                    self.wfile.write(b'{"error": "Missing id or status"}')
+                    self.wfile.write(b'{"error": "Missing id/status or items list"}')
                     return
 
-                assignments = load_assignments()
-                target = None
-                for a in assignments:
-                    if str(a.get("id")) == str(task_id):
-                        target = a
-                        break
+                with DATA_LOCK:
+                    assignments = load_assignments()
+                    updated_targets = []
 
-                if not target and task_title:
-                    for a in assignments:
-                        if a.get("title", "").strip() == str(task_title).strip():
-                            target = a
-                            break
+                    for item in items_to_update:
+                        task_id = item.get("id")
+                        new_status = item.get("status")
+                        task_title = item.get("title")
 
-                if target:
-                    target["status"] = new_status
-                    if new_status == "submitted":
-                        target["completedAt"] = datetime.now(JST).isoformat()
-                    elif new_status == "not_started":
-                        target["completedAt"] = None
+                        target = None
+                        if task_id:
+                            for a in assignments:
+                                if str(a.get("id")) == str(task_id):
+                                    target = a
+                                    break
+                        if not target and task_title:
+                            for a in assignments:
+                                if a.get("title", "").strip() == str(task_title).strip():
+                                    target = a
+                                    break
 
-                if target:
-                    save_assignments(assignments)
-                    threading.Thread(
-                        target=git_push_sync,
-                        args=(f"Update task '{target.get('title')}' status to {new_status} via Web",),
-                        daemon=True
-                    ).start()
+                        if target and new_status:
+                            target["status"] = new_status
+                            if new_status == "submitted":
+                                target["completedAt"] = datetime.now(JST).isoformat()
+                            elif new_status == "not_started":
+                                target["completedAt"] = None
+                            updated_targets.append(target)
 
-                    resp = json.dumps({"status": "ok", "id": task_id, "new_status": new_status, "title": target.get("title")}, ensure_ascii=False).encode("utf-8")
-                    self.send_response(200)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header("Content-Length", str(len(resp)))
-                    self._send_cors()
-                    self.end_headers()
-                    self.wfile.write(resp)
-                    print(f"🌐 [Web Sync API] Task '{target.get('title')}' status updated to {new_status}")
-                else:
-                    self.send_response(404)
-                    self._send_cors()
-                    self.end_headers()
-                    self.wfile.write(b'{"error": "Task not found"}')
+                    if updated_targets:
+                        save_assignments(assignments)
+                        summary_title = updated_targets[0].get('title', 'task')
+                        schedule_git_push(f"Update {len(updated_targets)} task(s) status via Web: {summary_title}", delay=60.0)
+
+                        resp = json.dumps({
+                            "status": "ok",
+                            "updated_count": len(updated_targets),
+                            "items": [{"id": t.get("id"), "status": t.get("status"), "title": t.get("title")} for t in updated_targets]
+                        }, ensure_ascii=False).encode("utf-8")
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json; charset=utf-8")
+                        self.send_header("Content-Length", str(len(resp)))
+                        self._send_cors()
+                        self.end_headers()
+                        self.wfile.write(resp)
+                        print(f"🌐 [Web Sync API] Successfully updated {len(updated_targets)} task(s) via Web")
+                    else:
+                        self.send_response(404)
+                        self._send_cors()
+                        self.end_headers()
+                        self.wfile.write(b'{"error": "Task not found"}')
             except Exception as e:
                 self.send_response(500)
                 self._send_cors()
@@ -884,24 +983,20 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                 body = self.rfile.read(content_len)
                 payload = json.loads(body.decode("utf-8"))
                 task_id = payload.get("id")
-
-                assignments = load_assignments()
-                new_assignments = [a for a in assignments if str(a.get("id")) != str(task_id)]
-                save_assignments(new_assignments)
-
                 title = payload.get("title", task_id)
-                threading.Thread(
-                    target=git_push_sync,
-                    args=(f"Delete task '{title}' via Web",),
-                    daemon=True
-                ).start()
+
+                with DATA_LOCK:
+                    assignments = load_assignments()
+                    new_assignments = [a for a in assignments if str(a.get("id")) != str(task_id)]
+                    save_assignments(new_assignments)
+                    schedule_git_push(f"Delete task '{title}' via Web", delay=60.0)
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self._send_cors()
                 self.end_headers()
                 self.wfile.write(b'{"status": "ok", "action": "deleted"}')
-                print(f"🌐 [Web Sync API] Task '{task_id}' permanently deleted via Web")
+                print(f"🌐 [Web Sync API] Task '{task_id}' deleted via Web")
             except Exception as e:
                 self.send_response(500)
                 self._send_cors()
@@ -916,42 +1011,39 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                 title = payload.get("title")
                 task_id = payload.get("id")
 
-                assignments = load_assignments()
-                new_assignments = [a for a in assignments if a.get("title") != title and str(a.get("id")) != str(task_id)]
-                save_assignments(new_assignments)
+                with DATA_LOCK:
+                    assignments = load_assignments()
+                    new_assignments = [a for a in assignments if a.get("title") != title and str(a.get("id")) != str(task_id)]
+                    save_assignments(new_assignments)
 
-                # Persist in ignored_titles.json (committed to git so GitHub Actions never resurrects it)
-                if title:
-                    cur_ignored = load_ignored_titles()
-                    if title not in cur_ignored:
-                        cur_ignored.append(title)
-                        save_ignored_titles(cur_ignored)
+                    # Persist in ignored_titles.json (committed to git so GitHub Actions never resurrects it)
+                    if title:
+                        cur_ignored = load_ignored_titles()
+                        if title not in cur_ignored:
+                            cur_ignored.append(title)
+                            save_ignored_titles(cur_ignored)
 
-                # Add to local config.json ignored_titles if present
-                cfg = load_config()
-                if "ignored_titles" not in cfg:
-                    cfg["ignored_titles"] = []
-                if title and title not in cfg["ignored_titles"]:
-                    cfg["ignored_titles"].append(title)
-                    if os.path.exists(CONFIG_PATH):
-                        try:
-                            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-                                json.dump(cfg, f, ensure_ascii=False, indent=2)
-                        except Exception:
-                            pass
+                    # Add to local config.json ignored_titles if present
+                    cfg = load_config()
+                    if "ignored_titles" not in cfg:
+                        cfg["ignored_titles"] = []
+                    if title and title not in cfg["ignored_titles"]:
+                        cfg["ignored_titles"].append(title)
+                        if os.path.exists(CONFIG_PATH):
+                            try:
+                                with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+                                    json.dump(cfg, f, ensure_ascii=False, indent=2)
+                            except Exception:
+                                pass
 
-                threading.Thread(
-                    target=git_push_sync,
-                    args=(f"Ignore task '{title}' via Web",),
-                    daemon=True
-                ).start()
+                    schedule_git_push(f"Ignore task '{title}' via Web", delay=60.0)
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self._send_cors()
                 self.end_headers()
                 self.wfile.write(b'{"status": "ok", "action": "ignored"}')
-                print(f"🌐 [Web Sync API] Task '{title}' permanently ignored via Web")
+                print(f"🌐 [Web Sync API] Task '{title}' ignored via Web")
             except Exception as e:
                 self.send_response(500)
                 self._send_cors()
@@ -980,17 +1072,13 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                 if not task.get("status"):
                     task["status"] = "not_started"
 
-                assignments = load_assignments()
-                # Check for existing id
-                assignments = [a for a in assignments if str(a.get("id")) != str(task["id"])]
-                assignments.append(task)
-                save_assignments(assignments)
-
-                threading.Thread(
-                    target=git_push_sync,
-                    args=(f"Add task via Web: {title}",),
-                    daemon=True
-                ).start()
+                with DATA_LOCK:
+                    assignments = load_assignments()
+                    # Check for existing id
+                    assignments = [a for a in assignments if str(a.get("id")) != str(task["id"])]
+                    assignments.append(task)
+                    save_assignments(assignments)
+                    schedule_git_push(f"Add task via Web: {title}", delay=60.0)
 
                 resp = json.dumps({"status": "ok", "action": "added", "task": task}, ensure_ascii=False).encode("utf-8")
                 self.send_response(200)
@@ -1021,43 +1109,40 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(b'{"error": "Missing task id"}')
                     return
 
-                assignments = load_assignments()
-                target = None
-                for a in assignments:
-                    if str(a.get("id")) == task_id:
-                        target = a
-                        break
+                with DATA_LOCK:
+                    assignments = load_assignments()
+                    target = None
+                    for a in assignments:
+                        if str(a.get("id")) == task_id:
+                            target = a
+                            break
 
-                if target:
-                    # Update fields
-                    for k in ("title", "subject", "deadline", "category", "priority", "memo", "submissionMethod", "status"):
-                        if k in task and task[k] is not None:
-                            target[k] = task[k]
-                    if target.get("status") == "submitted" and not target.get("completedAt"):
-                        target["completedAt"] = datetime.now(JST).isoformat()
-                    elif target.get("status") != "submitted":
-                        target["completedAt"] = None
+                    if target:
+                        # Update fields
+                        for k in ("title", "subject", "deadline", "category", "priority", "memo", "submissionMethod", "status"):
+                            if k in task and task[k] is not None:
+                                target[k] = task[k]
+                        if target.get("status") == "submitted" and not target.get("completedAt"):
+                            target["completedAt"] = datetime.now(JST).isoformat()
+                        elif target.get("status") != "submitted":
+                            target["completedAt"] = None
 
-                    save_assignments(assignments)
-                    threading.Thread(
-                        target=git_push_sync,
-                        args=(f"Update task '{target.get('title')}' details via Web",),
-                        daemon=True
-                    ).start()
+                        save_assignments(assignments)
+                        schedule_git_push(f"Update task '{target.get('title')}' details via Web", delay=60.0)
 
-                    resp = json.dumps({"status": "ok", "action": "updated", "task": target}, ensure_ascii=False).encode("utf-8")
-                    self.send_response(200)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header("Content-Length", str(len(resp)))
-                    self._send_cors()
-                    self.end_headers()
-                    self.wfile.write(resp)
-                    print(f"🌐 [Web Sync API] Task '{target.get('title')}' updated via Web")
-                else:
-                    self.send_response(404)
-                    self._send_cors()
-                    self.end_headers()
-                    self.wfile.write(b'{"error": "Task not found"}')
+                        resp = json.dumps({"status": "ok", "action": "updated", "task": target}, ensure_ascii=False).encode("utf-8")
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json; charset=utf-8")
+                        self.send_header("Content-Length", str(len(resp)))
+                        self._send_cors()
+                        self.end_headers()
+                        self.wfile.write(resp)
+                        print(f"🌐 [Web Sync API] Task '{target.get('title')}' updated via Web")
+                    else:
+                        self.send_response(404)
+                        self._send_cors()
+                        self.end_headers()
+                        self.wfile.write(b'{"error": "Task not found"}')
             except Exception as e:
                 self.send_response(500)
                 self._send_cors()
