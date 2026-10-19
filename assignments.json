@@ -679,5 +679,35 @@
     "createdAt": "2026-10-19T08:11:57.264353",
     "completedAt": null,
     "moodleUid": "642097@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261019161814-0",
+    "category": "academic",
+    "subject": "05原子核物理",
+    "title": "パリティを考える意味について",
+    "deadline": "2026-10-23T22:02:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-19T16:18:14.966260",
+    "completedAt": null,
+    "moodleUid": "650194@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261019161814-1",
+    "category": "academic",
+    "subject": "08実験",
+    "title": "実験⑥(D直前) 後組",
+    "deadline": "2026-12-18T23:59:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-19T16:18:14.966754",
+    "completedAt": null,
+    "moodleUid": "577533@letus.ed.tus.ac.jp"
   }
 ]
