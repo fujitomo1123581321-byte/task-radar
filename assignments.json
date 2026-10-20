@@ -419,21 +419,6 @@
     "moodleUid": "577523@letus.ed.tus.ac.jp"
   },
   {
-    "id": "letus-20261015042535-1",
-    "category": "academic",
-    "subject": "08実験",
-    "title": "実験⑤(D準備) 前組",
-    "deadline": "2026-10-23T19:00:00",
-    "submissionMethod": "LETUS",
-    "status": "not_started",
-    "priority": "medium",
-    "memo": "LETUSより自動同期",
-    "folderPath": null,
-    "createdAt": "2026-10-15T04:25:35.208493",
-    "completedAt": null,
-    "moodleUid": "577511@letus.ed.tus.ac.jp"
-  },
-  {
     "id": "letus-20261015042535-2",
     "category": "academic",
     "subject": "08実験",
