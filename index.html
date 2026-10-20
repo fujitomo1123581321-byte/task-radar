@@ -337,9 +337,10 @@
   </main>
 
   <!-- ADD / EDIT MODAL -->
-  <div id="assignmentModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
-    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-      <div class="px-6 py-4 border-b border-slate-700/80 flex items-center justify-between">
+  <div id="assignmentModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh] my-auto overflow-hidden">
+      <!-- Modal Header (Pinned at top) -->
+      <div class="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-700/80 flex items-center justify-between shrink-0 bg-slate-800">
         <h3 id="modalTitle" class="text-base font-bold text-white flex items-center gap-2">
           <span>📝 タスクを追加</span>
         </h3>
@@ -349,8 +350,11 @@
           </svg>
         </button>
       </div>
-      <form id="assignmentForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4 text-xs sm:text-sm">
-        <input type="hidden" id="formId">
+      <!-- Modal Form with scrollable body and pinned footer -->
+      <form id="assignmentForm" onsubmit="handleFormSubmit(event)" class="flex flex-col flex-1 min-h-0 text-xs sm:text-sm overflow-hidden">
+        <!-- Scrollable Inputs Area -->
+        <div class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+          <input type="hidden" id="formId">
 
         <!-- Category Radio Selector -->
         <div>
@@ -422,8 +426,10 @@
           <textarea id="formMemo" rows="2" placeholder="持ち物や留意点、関連メモを記入" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"></textarea>
         </div>
 
-        <!-- Form Buttons -->
-        <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-700/80">
+        </div>
+
+        <!-- Form Buttons (Pinned Footer: ALWAYS visible without full screen) -->
+        <div class="px-5 sm:px-6 py-3.5 bg-slate-800/95 border-t border-slate-700/80 flex items-center justify-end gap-3 shrink-0 shadow-lg">
           <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs sm:text-sm font-medium text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 rounded-lg transition">
             キャンセル
           </button>
@@ -543,8 +549,8 @@
   </div>
 
   <!-- HELP / AI GUIDE MODAL -->
-  <div id="helpModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
-    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl p-6 space-y-4">
+  <div id="helpModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto my-auto">
       <div class="flex items-center justify-between border-b border-slate-700 pb-3">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <span>🤖 AIチャット頼み方ガイド</span>
@@ -585,8 +591,8 @@
   </div>
 
   <!-- MOBILE PAIRING & PWA GUIDE MODAL -->
-  <div id="mobileModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
-    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl p-6 space-y-4">
+  <div id="mobileModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto my-auto">
       <div class="flex items-center justify-between border-b border-slate-700 pb-3">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <span>📱 スマホで開く・アプリ化</span>
