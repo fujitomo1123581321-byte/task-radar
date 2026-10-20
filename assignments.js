@@ -570,7 +570,7 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "蒼空　Σ70mm買う",
     "deadline": "2026-10-23T23:59:59",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": "high",
     "memo": "今週金曜日までに",
     "folderPath": null,
@@ -672,12 +672,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "パリティを考える意味について",
     "deadline": "2026-10-23T22:02:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-19T16:18:14.966260",
-    "completedAt": null,
+    "completedAt": "2026-10-20T12:43:04.474579+09:00",
     "moodleUid": "650194@letus.ed.tus.ac.jp"
   },
   {
