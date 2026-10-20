@@ -699,8 +699,8 @@ window.INITIAL_ASSIGNMENTS = [
     "id": "custom-20261020120034",
     "category": "personal",
     "subject": "個人",
-    "title": "お金確認、discoed",
-    "deadline": "2026-10-20T13:00:27",
+    "title": "お金確認、discoedで執行部確認",
+    "deadline": "2026-10-20T13:00",
     "submissionMethod": "Discord Bot",
     "status": "not_started",
     "priority": "medium",
@@ -716,11 +716,11 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "CAMScannerのデフォルト設定",
     "deadline": "2026-10-20T13:00:00",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "昼までに追加",
     "folderPath": null,
     "createdAt": "2026-10-20T12:12:45.623319+09:00",
-    "completedAt": null
+    "completedAt": "2026-10-20T15:04:38.505263+09:00"
   }
 ];
