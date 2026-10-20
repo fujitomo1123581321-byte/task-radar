@@ -722,5 +722,50 @@
     "folderPath": null,
     "createdAt": "2026-10-20T12:12:45.623319+09:00",
     "completedAt": "2026-10-20T15:04:38.505263+09:00"
+  },
+  {
+    "id": "letus-20261020075913-0",
+    "category": "academic",
+    "subject": "04天体物理学",
+    "title": "課題　10/20  課題6まで",
+    "deadline": "2026-10-20T14:40:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-20T07:59:13.096027",
+    "completedAt": null,
+    "moodleUid": "658957@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261020075913-1",
+    "category": "academic",
+    "subject": "03量子力学3",
+    "title": "個人テスト１",
+    "deadline": "2026-10-20T15:05:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "high",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-20T07:59:13.096131",
+    "completedAt": null,
+    "moodleUid": "651401@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261020075913-2",
+    "category": "academic",
+    "subject": "10国際関係論",
+    "title": "ミニテスト6(締切；10月28日)",
+    "deadline": "2026-10-28T23:59:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "high",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-20T07:59:13.096551",
+    "completedAt": null,
+    "moodleUid": "643297@letus.ed.tus.ac.jp"
   }
 ]
