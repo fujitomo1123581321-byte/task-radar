@@ -767,5 +767,19 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-20T07:59:13.096551",
     "completedAt": null,
     "moodleUid": "643297@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "custom-20261020170050",
+    "category": "personal",
+    "subject": "個人",
+    "title": "レデューサーねじ込み用のアダプターの口径を確認する",
+    "deadline": "2026-10-31T23:59:59",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "Discordより登録",
+    "folderPath": null,
+    "createdAt": "2026-10-20T17:00:50.937362+09:00",
+    "completedAt": null
   }
 ];
