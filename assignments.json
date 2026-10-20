@@ -730,12 +730,12 @@
     "title": "課題　10/20  課題6まで",
     "deadline": "2026-10-20T14:40:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-20T07:59:13.096027",
-    "completedAt": null,
+    "completedAt": "2026-10-20T17:09:25.438075+09:00",
     "moodleUid": "658957@letus.ed.tus.ac.jp"
   },
   {
@@ -745,12 +745,12 @@
     "title": "個人テスト１",
     "deadline": "2026-10-20T15:05:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-20T07:59:13.096131",
-    "completedAt": null,
+    "completedAt": "2026-10-20T17:09:34.365107+09:00",
     "moodleUid": "651401@letus.ed.tus.ac.jp"
   },
   {
@@ -780,6 +780,34 @@
     "memo": "Discordより登録",
     "folderPath": null,
     "createdAt": "2026-10-20T17:00:50.937362+09:00",
+    "completedAt": null
+  },
+  {
+    "id": "custom-20261020170752",
+    "category": "personal",
+    "subject": "個人",
+    "title": "てレビュー パワー名と買う",
+    "deadline": "2026-10-25T23:59:59",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "今週中",
+    "folderPath": null,
+    "createdAt": "2026-10-20T17:07:52.973462+09:00",
+    "completedAt": null
+  },
+  {
+    "id": "custom-20261020170829",
+    "category": "personal",
+    "subject": "個人",
+    "title": "返金申請",
+    "deadline": "2026-10-25T23:59:59",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "Discordより登録",
+    "folderPath": null,
+    "createdAt": "2026-10-20T17:08:29.607224+09:00",
     "completedAt": null
   }
 ]
