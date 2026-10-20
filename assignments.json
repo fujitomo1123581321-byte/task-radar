@@ -708,5 +708,19 @@
     "folderPath": null,
     "createdAt": "2026-10-20T12:00:34.539441+09:00",
     "completedAt": null
+  },
+  {
+    "id": "custom-20261020121245",
+    "category": "personal",
+    "subject": "個人",
+    "title": "CAMScannerのデフォルト設定",
+    "deadline": "2026-10-20T13:00:00",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "昼までに追加",
+    "folderPath": null,
+    "createdAt": "2026-10-20T12:12:45.623319+09:00",
+    "completedAt": null
   }
 ]
