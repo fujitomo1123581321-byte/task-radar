@@ -709,5 +709,19 @@
     "createdAt": "2026-10-19T16:18:14.966754",
     "completedAt": null,
     "moodleUid": "577533@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "custom-20261020120034",
+    "category": "personal",
+    "subject": "個人",
+    "title": "お金確認、discoed",
+    "deadline": "2026-10-20T13:00:27",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "Discordより登録",
+    "folderPath": null,
+    "createdAt": "2026-10-20T12:00:34.539441+09:00",
+    "completedAt": null
   }
 ]
