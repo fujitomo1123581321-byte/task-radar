@@ -809,5 +809,18 @@ window.INITIAL_ASSIGNMENTS = [
     "folderPath": null,
     "createdAt": "2026-10-20T17:08:29.607224+09:00",
     "completedAt": null
+  },
+  {
+    "id": "task-1792491062439",
+    "category": "personal",
+    "subject": "その他",
+    "title": "イヤホン持って来る",
+    "deadline": "2026-10-21T08:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "createdAt": "2026-10-20T10:11:02.439Z",
+    "completedAt": null
   }
 ];
