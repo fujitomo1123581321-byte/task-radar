@@ -275,12 +275,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "ミニテスト5 (提出期限: 10月21日締切)",
     "deadline": "2026-10-21T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-14T20:32:53.299174",
-    "completedAt": null,
+    "completedAt": "2026-10-21T11:04:06.834293+09:00",
     "moodleUid": "643296@letus.ed.tus.ac.jp"
   },
   {
@@ -818,9 +818,9 @@ window.INITIAL_ASSIGNMENTS = [
     "deadline": "2026-10-21T08:00",
     "submissionMethod": "LETUS",
     "priority": "medium",
-    "status": "not_started",
+    "status": "submitted",
     "memo": "",
     "createdAt": "2026-10-20T10:11:02.439Z",
-    "completedAt": null
+    "completedAt": "2026-10-21T11:04:01.130946+09:00"
   }
 ];
