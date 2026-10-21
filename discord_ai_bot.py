@@ -275,10 +275,11 @@ def schedule_git_push(commit_msg: str, delay: float = 60.0):
         print(f"[Debounced Git Sync] Queued push in {delay}s: {commit_msg}")
 
 # -------------------------------------------------------------
-# Session Management
+# Session & Conversation History Management
 # -------------------------------------------------------------
 user_sessions = {}
-SESSION_TIMEOUT = 600
+user_chat_histories = {}
+SESSION_TIMEOUT = 600  # 10分間有効
 
 def get_user_session(user_id: int):
     now = time.time()
@@ -294,6 +295,43 @@ def get_user_session(user_id: int):
 def clear_user_session(user_id: int):
     if user_id in user_sessions:
         del user_sessions[user_id]
+
+def add_chat_history(user_id: int, role: str, content: str):
+    """
+    ユーザーとBotの直近のやり取り（直近10分・最大8件）をインメモリに保持
+    role: "user" | "assistant"
+    """
+    now = time.time()
+    if user_id not in user_chat_histories:
+        user_chat_histories[user_id] = []
+    # 有効期限切れ（10分以上経過）をパージ
+    user_chat_histories[user_id] = [
+        item for item in user_chat_histories[user_id]
+        if now - item.get("time", 0) < SESSION_TIMEOUT
+    ]
+    user_chat_histories[user_id].append({
+        "role": role,
+        "content": str(content)[:600],
+        "time": now
+    })
+    # 最大8件（4往復）に制限
+    if len(user_chat_histories[user_id]) > 8:
+        user_chat_histories[user_id] = user_chat_histories[user_id][-8:]
+
+def get_chat_history(user_id: int) -> list:
+    now = time.time()
+    if user_id not in user_chat_histories:
+        return []
+    valid = [
+        item for item in user_chat_histories[user_id]
+        if now - item.get("time", 0) < SESSION_TIMEOUT
+    ]
+    user_chat_histories[user_id] = valid
+    return valid
+
+def clear_chat_history(user_id: int):
+    if user_id in user_chat_histories:
+        del user_chat_histories[user_id]
 
 # -------------------------------------------------------------
 # Gemini AI Engine with Dynamic Fallback
@@ -353,13 +391,33 @@ def parse_json_from_ai(ai_text: str):
 # -------------------------------------------------------------
 # Dialog Flow Logic (Clean 1-Deadline + Natural Memo Architecture)
 # -------------------------------------------------------------
-def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
+def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str, prev_history: list = None):
     assignments = load_assignments()
     now_dt = datetime.now(JST)
     now_str = now_dt.strftime("%Y-%m-%d %H:%M:%S (JST, %A)")
 
+    # 今週末の日曜日 23:59:00 の計算 (JST)
+    days_until_sunday = (6 - now_dt.weekday()) % 7
+    if days_until_sunday == 0 and now_dt.hour >= 20:
+        days_until_sunday = 7
+    default_sunday_dt = (now_dt + timedelta(days=days_until_sunday)).replace(hour=23, minute=59, second=0, microsecond=0)
+    default_deadline_iso = default_sunday_dt.strftime("%Y-%m-%dT23:59:00")
+    default_deadline_display = default_sunday_dt.strftime("%Y年%m月%d日(%a) 23:59")
+
     session = get_user_session(user_id)
     existing_draft = session.get("draft") if session else None
+
+    if prev_history is None:
+        prev_history = get_chat_history(user_id)
+
+    if prev_history:
+        history_lines = []
+        for h in prev_history:
+            spk = "ユーザー" if h.get("role") == "user" else "アシスタント"
+            history_lines.append(f"- {spk}: {h.get('content')}")
+        history_text = "\n".join(history_lines)
+    else:
+        history_text = "なし（前回の会話なし）"
 
     uncompleted = [a for a in assignments if a.get("status") != "submitted"]
     tasks_summary = []
@@ -383,8 +441,14 @@ def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
 ユーザーは東京理科大学の学生で、学業（LETUS）や個人のタスクを管理しています。
 ユーザーからの発言を自然言語解析し、適切なアクションとスロット（情報）の充足度を判定してください。
 
+【直近の会話履歴（過去10分以内・古い順）】:
+{history_text}
+
 【既存の入力中ドラフト（前回の会話コンテキスト）】:
 {json.dumps(existing_draft, ensure_ascii=False, indent=2) if existing_draft else "なし（新規の発言）"}
+
+【デフォルト締切（今週末・締切未指定時の仮設定用）】:
+{default_deadline_iso} ({default_deadline_display})
 
 【現在の未完了タスク一覧】:
 {json.dumps(tasks_summary, ensure_ascii=False, indent=2)}
@@ -394,19 +458,30 @@ def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
 
 【タスク追加（add）の対話ルール】:
 - タスクに必要な情報:
-  1. `title`: タスクの内容（例: レポート提出、小テスト、原稿を覚えるなど）
-  2. `subject`: 科目名または分類（例: 電磁気学、英語、個人、アルバイトなど）。指定がなければ「一般」または「個人」。
+  1. `title`: タスクの内容（例: レポート提出、小テスト、シグマ 14-24mm 曇り確認、原稿暗記など）
+  2. `subject`: 科目名または分類（例: 電磁気学、英語、個人、機材、アルバイトなど）。指定がなければ「一般」または「個人」。
   3. `deadline`: 締切日時（YYYY-MM-DDTHH:MM:SS 形式）。
-  4. `memo`: ユーザーの補足や希望（例: 「できれば金曜中に完了したい」などの要望があれば、そのままメモ欄に記載してください）。
-- 判定基準 (`is_ready`):
-  - 締切に関する言及が一切ない場合（例: 「レポート追加」「タスク登録」のみ）:
-    `is_ready` は false にし、`ask_question` で締切を優しく質問してください。
-  - 締切が指定されている場合（例: 「土曜正午」「明日の18時」「10/25」など）:
-    現在時刻 {now_str} を基準に正確に計算して `deadline` にセットし、`is_ready` は true にしてください。
-    ※もし「締めは土曜正午だけどできれば金曜中に」と言われたら、締切は土曜正午（2026-10-17T12:00:00）にセットし、memoに「できれば金曜中に完了したい」と記載してください。
+  4. `category`: "academic"（大学・授業課題）または "personal"（個人・日常・機材・ToDo）
+  5. `priority`: "high" | "medium" | "low"
+  6. `memo`: ユーザーの補足や希望
+  7. `is_default_deadline`: 締切がユーザーによって明示されず、デフォルト締切（今週末）を仮設定した場合は true、ユーザーが明示的に日時を指定した場合は false
+
+- 会話文脈の継承ルール（最重要）:
+  - ユーザーが「タスクとして登録」「お願い」「はい」「追加して」「よろしく」「登録して」などの短い返答や承諾をした場合、直前の【直近の会話履歴】や【既存の入力中ドラフト】から、直前に話題になっていたタスク内容（レンズ確認、片付け、レポート等）を特定し、必ず action: "add" を生成すること。決して「新しいタスクですね！どのようなタスクを追加しますか？」などと白紙で聞き直してはならない。
+  - ユーザーが締切のみを返信した場合（例: 「来週火曜の18時で」「明日の夜まで」など）は、既存のドラフトの title や subject を引き継ぎ、deadline のみを更新して action: "add", is_ready: true を出力すること。
+
+- 締切の決定ルール (`is_ready`):
+  - 個人タスク（category == "personal": 機材チェック、日常ToDo、買い物、個人メモなど）:
+    - ユーザーから明示的な日時指定がない場合: 上記の【デフォルト締切】（{default_deadline_iso}）を `deadline` に自動設定し、`is_default_deadline` を true、`is_ready` を true にしてください。（ユーザーに何度も日時を尋問せず、ワンタップで確定できる確認カードを即座に提示するため）
+    - ユーザーから明示的な日時指定がある場合（例: 「明日」「土曜正午」「10/25」など）: 現在日時 {now_str} を基準に正確に計算して `deadline` にセットし、`is_default_deadline` を false、`is_ready` を true にしてください。
+  - 学業タスク（category == "academic": 大学の課題、レポート提出、小テストなど）:
+    - 締切に関する言及が一切ない場合: `is_ready` を false にし、`ask_question` で締切を優しく質問してください。ただし、ユーザーが「未定」「適当でいい」「特にない」「決まってない」と答えた場合は、デフォルト締切をセットして `is_default_deadline`: true, `is_ready`: true にしてください。
+
+- 雑談・相談（chat）時のドラフト仮生成:
+  - ユーザーが備品点検や作業メモ（例: 「シグマ 14 24 くもり 確認」「本を買う」など）をつぶやき、action: "chat" と判定した場合でも、将来のタスク登録に備えて `draft` フィールドに想定される title（「シグマ 14-24mm 曇り確認」等）, subject（「機材/個人」等）, category（"personal"）を生成して含めてください。
 
 【その他のアクション】:
-- "complete": タスク完了（未完了タスクから一致するIDを特定。ユーザーが複数のタスクに言及している場合は該当するすべてのIDを matched_task_ids 配列に含めること）
+- "complete": タスク完了（未完了タスクから一致するIDを特定。複数言及時は matched_task_ids に全て含める）
 - "list": 残りタスク確認（「今のタスク」「課題教えて」など）
 - "completed_list": 完了したタスクの確認（「完了した課題教えて」「最近終わったタスク」など）
 - "sync": LETUS同期
@@ -416,15 +491,16 @@ def analyze_dialog_with_gemini(user_id: int, user_msg: str, api_key: str):
 【出力フォーマット（必ずこのJSONのみを出力してください）】:
 ```json
 {{
-  "action": "add" | "complete" | "list" | "sync" | "chat" | "cancel",
+  "action": "add" | "complete" | "list" | "completed_list" | "sync" | "chat" | "cancel",
   "is_ready": true | false,
   "draft": {{
     "title": "タスク名",
     "subject": "科目または分類",
     "deadline": "YYYY-MM-DDTHH:MM:SS",
+    "is_default_deadline": true | false,
     "category": "academic" | "personal",
     "priority": "high" | "medium" | "low",
-    "memo": "詳細メモ（できれば金曜中などの補足があれば記載）"
+    "memo": "詳細メモ"
   }},
   "ask_question": "不足情報がある場合の質問文",
   "matched_task_ids": ["completeの場合のIDリスト（複数可）"],
@@ -494,6 +570,7 @@ class TaskConfirmView(discord.ui.View):
             assignments.append(new_item)
             save_assignments(assignments)
         clear_user_session(self.user_id)
+        clear_chat_history(self.user_id)
 
         schedule_git_push(f"Add task via Discord: {title}", delay=60.0)
 
@@ -527,6 +604,7 @@ class TaskConfirmView(discord.ui.View):
         for child in self.children:
             child.disabled = True
         clear_user_session(self.user_id)
+        clear_chat_history(self.user_id)
         await interaction.response.edit_message(content="❌ タスクの追加をキャンセルしました。", embed=None, view=self)
 
     async def on_timeout(self):
@@ -577,6 +655,12 @@ async def on_message(message: discord.Message):
         if any(k in ch_name for k in ["課題", "タスク", "task", "todo", "bot"]):
             is_task_channel = True
 
+    is_reply_to_bot = False
+    if message.reference and message.reference.resolved:
+        ref_msg = message.reference.resolved
+        if getattr(ref_msg, "author", None) and ref_msg.author.id == bot.user.id:
+            is_reply_to_bot = True
+
     if is_command:
         await bot.process_commands(message)
         return
@@ -584,7 +668,7 @@ async def on_message(message: discord.Message):
     user_id = message.author.id
     has_active_session = (get_user_session(user_id) is not None)
 
-    if is_mentioned or is_dm or is_task_channel or has_active_session:
+    if is_mentioned or is_dm or is_task_channel or has_active_session or is_reply_to_bot:
         clean_content = message.content.replace(f"<@{bot.user.id}>", "").strip()
         if not clean_content:
             await message.reply("👋 何か用事かな？「〜のレポート追加して」「〜終わった」「残りの課題教えて」など何でも話しかけてね！")
@@ -593,6 +677,7 @@ async def on_message(message: discord.Message):
         if clean_content.lower() in ["キャンセル", "cancel", "やめる", "とりけし", "取り消し"]:
             if has_active_session:
                 clear_user_session(user_id)
+                clear_chat_history(user_id)
                 await message.reply("❌ タスクの追加をキャンセルしました。")
                 return
 
@@ -600,7 +685,12 @@ async def on_message(message: discord.Message):
             try:
                 loop = asyncio.get_running_loop()
                 api_key = CONFIG.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
-                res = await loop.run_in_executor(None, analyze_dialog_with_gemini, user_id, clean_content, api_key)
+
+                # 直前までの会話履歴を取得し、今回のユーザー発言を履歴に追加
+                prev_history = get_chat_history(user_id)
+                add_chat_history(user_id, "user", clean_content)
+
+                res = await loop.run_in_executor(None, analyze_dialog_with_gemini, user_id, clean_content, api_key, prev_history)
                 action = res.get("action", "chat")
                 model_used = res.get("_model_used", "Gemini")
 
@@ -615,6 +705,7 @@ async def on_message(message: discord.Message):
                         embed = discord.Embed(title="📝 情報を教えてください", description=question, color=0x3498db)
                         embed.set_footer(text="💡 キャンセルしたい場合は「キャンセル」と返信してください")
                         await message.reply(embed=embed)
+                        add_chat_history(user_id, "assistant", question)
                         return
 
                     user_sessions[user_id] = {"draft": draft, "updated_at": time.time()}
@@ -624,10 +715,13 @@ async def on_message(message: discord.Message):
                     priority = draft.get("priority", "medium")
                     dl = draft.get("deadline")
                     memo = draft.get("memo")
+                    is_default_dl = draft.get("is_default_deadline", False)
 
                     try:
                         dl_dt = datetime.strptime(dl, "%Y-%m-%dT%H:%M:%S")
                         dl_display = dl_dt.strftime("%Y年%m月%d日(%a) %H:%M")
+                        if is_default_dl:
+                            dl_display += "（仮設定・今週末）"
                     except Exception:
                         dl_display = dl or "未定"
 
@@ -641,11 +735,16 @@ async def on_message(message: discord.Message):
                     embed.add_field(name="🔥 優先度", value=priority.upper(), inline=True)
                     if memo and memo != "Discordより登録":
                         embed.add_field(name="📝 メモ", value=memo, inline=False)
-                    embed.set_footer(text=f"AI Brain: {model_used} | 下のボタンを押して確定してください")
+
+                    if is_default_dl:
+                        embed.set_footer(text=f"AI Brain: {model_used} | 💡 締切を変更したい場合は「明日の18時で」「来週月曜まで」などと返信してください")
+                    else:
+                        embed.set_footer(text=f"AI Brain: {model_used} | 下のボタンを押して確定してください")
 
                     view = TaskConfirmView(user_id=user_id, draft=draft, model_used=model_used)
                     sent_msg = await message.reply(embed=embed, view=view)
                     view.message = sent_msg
+                    add_chat_history(user_id, "assistant", f"タスク『{title}』の登録確認カードを提示（締切: {dl_display}）")
 
                 # Handle ACTION: COMPLETE
                 elif action == "complete":
@@ -699,6 +798,7 @@ async def on_message(message: discord.Message):
                             )
                         embed.set_footer(text=f"AI Brain: {model_used} | Webダッシュボードに即時反映済み")
                         await message.reply(embed=embed)
+                        add_chat_history(user_id, "assistant", f"タスク完了: {', '.join(titles)}")
                     else:
                         await message.reply("🤔 完了にしたいタスクが見つかりませんでした。\n「未完了の課題を教えて」と聞いて名前を確認してみてください！")
 
@@ -734,6 +834,7 @@ async def on_message(message: discord.Message):
 
                     embed.add_field(name="🌐 ダッシュボード", value="[Task Radarを開く](https://fujitomo1123581321-byte.github.io/task-radar/)", inline=False)
                     await message.reply(embed=embed)
+                    add_chat_history(user_id, "assistant", f"完了タスク一覧を提示（{len(completed)}件）")
 
                 # Handle ACTION: LIST
                 elif action == "list":
@@ -782,6 +883,7 @@ async def on_message(message: discord.Message):
 
                     embed.add_field(name="🌐 ダッシュボード", value="[Task Radarを開く](https://fujitomo1123581321-byte.github.io/task-radar/)", inline=False)
                     await message.reply(embed=embed)
+                    add_chat_history(user_id, "assistant", f"未完了タスク一覧を提示（{len(uncompleted)}件）")
 
                 # Handle ACTION: SYNC
                 elif action == "sync":
@@ -791,20 +893,27 @@ async def on_message(message: discord.Message):
                         await loop.run_in_executor(None, sync_letus.fetch_and_sync)
                         await loop.run_in_executor(None, git_push_sync, "Auto-sync LETUS assignments via Discord")
                         await message.reply("✅ LETUSの最新課題を同期し、Webダッシュボードへ反映しました！")
+                        add_chat_history(user_id, "assistant", "LETUS同期完了")
                     except Exception as e:
                         await message.reply(f"⚠️ 同期中にエラーが発生しました: {e}")
 
                 # Handle ACTION: CANCEL
                 elif action == "cancel":
                     clear_user_session(user_id)
+                    clear_chat_history(user_id)
                     await message.reply("❌ タスクの追加をキャンセルしました。")
 
                 # Handle ACTION: CHAT
                 else:
+                    tentative_draft = res.get("draft")
+                    if tentative_draft and tentative_draft.get("title"):
+                        user_sessions[user_id] = {"draft": tentative_draft, "updated_at": time.time()}
+
                     reply_text = res.get("reply_text") or "承知いたしました！"
                     embed = discord.Embed(description=reply_text, color=0x9b59b6)
                     embed.set_footer(text=f"AI Brain: {model_used}")
                     await message.reply(embed=embed)
+                    add_chat_history(user_id, "assistant", reply_text)
 
             except Exception as e:
                 print(f"[Error in message handler]: {e}")
