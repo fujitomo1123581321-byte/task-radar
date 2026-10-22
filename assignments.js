@@ -445,7 +445,7 @@ window.INITIAL_ASSIGNMENTS = [
     "memo": "講義中課題を解くために使ったプログラムの内容が正しく理解できているか確認するための問題です。講義中課題を解き終わってから挑戦し",
     "folderPath": null,
     "createdAt": "2026-10-15T14:02:39.003609",
-    "completedAt": "2026-10-22T11:22:04.000785+09:00",
+    "completedAt": "2026-10-22T13:32:07.852206+09:00",
     "moodleUid": "658401@letus.ed.tus.ac.jp"
   },
   {
@@ -849,7 +849,7 @@ window.INITIAL_ASSIGNMENTS = [
     "memo": "Discordより登録",
     "folderPath": null,
     "createdAt": "2026-10-21T12:14:19.323754+09:00",
-    "completedAt": "2026-10-22T10:07:32.538237+09:00"
+    "completedAt": "2026-10-22T13:31:59.514656+09:00"
   },
   {
     "id": "custom-20261021212815",
@@ -858,12 +858,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "実験予習",
     "deadline": "2026-10-22T23:59:00",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "Discordより登録",
     "folderPath": null,
     "createdAt": "2026-10-21T21:28:15.345419+09:00",
-    "completedAt": null
+    "completedAt": "2026-10-22T13:32:14.578166+09:00"
   },
   {
     "id": "custom-20261022114825",
