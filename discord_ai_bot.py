@@ -1130,7 +1130,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                             target["status"] = new_status
                             if new_status == "submitted":
                                 target["completedAt"] = datetime.now(JST).isoformat()
-                            elif new_status == "not_started":
+                            else:
                                 target["completedAt"] = None
                             updated_targets.append(target)
 

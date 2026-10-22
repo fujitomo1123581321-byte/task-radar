@@ -789,7 +789,7 @@
       });
     }
 
-    // --- PERSISTENT COMPLETED REGISTRY HELPERS ---
+    // --- PERSISTENT COMPLETED & UNCOMPLETED REGISTRY HELPERS ---
     function markTaskCompleted(a) {
       if (!a) return;
       try {
@@ -804,6 +804,17 @@
         localStorage.setItem('deadline_radar_completed_ids', JSON.stringify(completedIds));
         localStorage.setItem('deadline_radar_completed_titles', JSON.stringify(completedTitles));
         localStorage.setItem('deadline_radar_completed_uids', JSON.stringify(completedUids));
+
+        // Remove from uncompleted overrides
+        let uncompletedMap = JSON.parse(localStorage.getItem('deadline_radar_uncompleted_overrides') || '{}');
+        const keys = [
+          a.id ? String(a.id) : null,
+          a.title ? a.title.trim() : null,
+          a.moodleUid ? a.moodleUid.trim() : null
+        ].filter(Boolean);
+
+        keys.forEach(k => { delete uncompletedMap[k]; });
+        localStorage.setItem('deadline_radar_uncompleted_overrides', JSON.stringify(uncompletedMap));
       } catch (e) {
         console.warn('Failed to update completed registry:', e);
       }
@@ -823,8 +834,24 @@
         localStorage.setItem('deadline_radar_completed_ids', JSON.stringify(completedIds));
         localStorage.setItem('deadline_radar_completed_titles', JSON.stringify(completedTitles));
         localStorage.setItem('deadline_radar_completed_uids', JSON.stringify(completedUids));
+
+        // Store uncompleted override with timestamp so polling never reverts user action
+        let uncompletedMap = JSON.parse(localStorage.getItem('deadline_radar_uncompleted_overrides') || '{}');
+        const uncompletedTime = a.uncompletedAt || Date.now();
+        const entry = {
+          status: a.status || 'not_started',
+          uncompletedAt: uncompletedTime
+        };
+        const keys = [
+          a.id ? String(a.id) : null,
+          a.title ? a.title.trim() : null,
+          a.moodleUid ? a.moodleUid.trim() : null
+        ].filter(Boolean);
+
+        keys.forEach(k => { uncompletedMap[k] = entry; });
+        localStorage.setItem('deadline_radar_uncompleted_overrides', JSON.stringify(uncompletedMap));
       } catch (e) {
-        console.warn('Failed to update completed registry:', e);
+        console.warn('Failed to update uncompleted registry:', e);
       }
     }
 
@@ -833,16 +860,31 @@
       let completedIds = [];
       let completedTitles = [];
       let completedUids = [];
+      let uncompletedMap = {};
       try {
         completedIds = JSON.parse(localStorage.getItem('deadline_radar_completed_ids') || '[]');
         completedTitles = JSON.parse(localStorage.getItem('deadline_radar_completed_titles') || '[]');
         completedUids = JSON.parse(localStorage.getItem('deadline_radar_completed_uids') || '[]');
+        uncompletedMap = JSON.parse(localStorage.getItem('deadline_radar_uncompleted_overrides') || '{}');
       } catch (_) {}
 
-      // Pre-seed completed registry from any tasks already marked submitted
+      // Pre-seed completed registry from any tasks already marked submitted ONLY IF NOT overridden as uncompleted!
       let updated = false;
       items.forEach(a => {
         if (a.status === 'submitted') {
+          const key = (a.id && uncompletedMap[String(a.id)])
+            || (a.moodleUid && uncompletedMap[a.moodleUid.trim()])
+            || (a.title && uncompletedMap[a.title.trim()]);
+
+          if (key) {
+            // Task has an uncompleted override! Check if server completedAt is newer than uncompletedAt
+            const sCompletedTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+            if (sCompletedTime <= key.uncompletedAt) {
+              // Server's submitted status is older than user's uncompletion action! Do NOT re-seed!
+              return;
+            }
+          }
+
           if (a.id && !completedIds.includes(String(a.id))) { completedIds.push(String(a.id)); updated = true; }
           if (a.title && !completedTitles.includes(a.title.trim())) { completedTitles.push(a.title.trim()); updated = true; }
           if (a.moodleUid && !completedUids.includes(a.moodleUid.trim())) { completedUids.push(a.moodleUid.trim()); updated = true; }
@@ -857,6 +899,22 @@
       }
 
       return items.map(a => {
+        const key = (a.id && uncompletedMap[String(a.id)])
+          || (a.moodleUid && uncompletedMap[a.moodleUid.trim()])
+          || (a.title && uncompletedMap[a.title.trim()]);
+
+        if (key) {
+          const sCompletedTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+          if (sCompletedTime <= key.uncompletedAt) {
+            // Local uncompletion is newer! Keep uncompleted status
+            return {
+              ...a,
+              status: key.status || 'not_started',
+              completedAt: null
+            };
+          }
+        }
+
         const isCompleted = (a.id && completedIds.includes(String(a.id))) ||
                             (a.title && completedTitles.includes(a.title.trim())) ||
                             (a.moodleUid && completedUids.includes(a.moodleUid.trim()));
@@ -1002,30 +1060,56 @@
                 completedUids = JSON.parse(localStorage.getItem('deadline_radar_completed_uids') || '[]');
               } catch (_) {}
 
+              let uncompletedMap = {};
+              try {
+                uncompletedMap = JSON.parse(localStorage.getItem('deadline_radar_uncompleted_overrides') || '{}');
+              } catch (_) {}
+
               const merged = filteredServerData.map(serverItem => {
                 const localItem = localById.get(String(serverItem.id))
                   || (serverItem.moodleUid && localByUid.get(serverItem.moodleUid.trim()))
                   || (serverItem.title && localByTitle.get(serverItem.title.trim()));
 
-                const isRegisteredDone = completedIds.includes(String(serverItem.id))
-                  || (serverItem.title && completedTitles.includes(serverItem.title.trim()))
-                  || (serverItem.moodleUid && completedUids.includes(serverItem.moodleUid.trim()));
+                const uncompletedEntry = (serverItem.id && uncompletedMap[String(serverItem.id)])
+                  || (serverItem.moodleUid && uncompletedMap[serverItem.moodleUid.trim()])
+                  || (serverItem.title && uncompletedMap[serverItem.title.trim()]);
+
+                // 1. Check if user explicitly marked this uncompleted
+                if (uncompletedEntry) {
+                  const sCompletedTime = serverItem.completedAt ? new Date(serverItem.completedAt).getTime() : 0;
+                  if (sCompletedTime <= uncompletedEntry.uncompletedAt) {
+                    // Local uncompletion is newer! Keep local uncompleted status and sync to cloud if server differs
+                    if (serverItem.status === 'submitted') {
+                      throttledCloudStatusSync(serverItem.id, uncompletedEntry.status, serverItem.title);
+                    }
+                    return {
+                      ...serverItem,
+                      status: uncompletedEntry.status,
+                      completedAt: null
+                    };
+                  }
+                }
 
                 if (serverItem.status === 'submitted') {
+                  // If localItem was changed to uncompleted locally
+                  if (localItem && localItem.status !== 'submitted') {
+                    const localTime = localItem.uncompletedAt || (localItem._updatedAt || Date.now());
+                    const sCompletedTime = serverItem.completedAt ? new Date(serverItem.completedAt).getTime() : 0;
+                    if (sCompletedTime <= localTime) {
+                      throttledCloudStatusSync(serverItem.id, localItem.status, serverItem.title);
+                      return { ...serverItem, status: localItem.status, completedAt: null };
+                    }
+                  }
                   return serverItem;
                 } else {
                   // Server has not_started or in_progress
                   if (localItem && localItem.status === 'submitted') {
                     // Locally submitted - sync to cloud
-                    if (typeof throttledCloudStatusSync === 'function') {
-                      throttledCloudStatusSync(serverItem.id, 'submitted', serverItem.title);
-                    }
+                    throttledCloudStatusSync(serverItem.id, 'submitted', serverItem.title);
                     return { ...serverItem, status: 'submitted', completedAt: localItem.completedAt || new Date().toISOString() };
                   }
-                  // Neither server nor local memory is submitted: clear any stale localStorage registry
-                  markTaskUncompleted(serverItem);
                   if (localItem && localItem.status === 'in_progress') {
-                    return { ...serverItem, status: 'in_progress' };
+                    return { ...serverItem, status: 'in_progress', completedAt: null };
                   }
                   return serverItem;
                 }
@@ -1641,18 +1725,25 @@
 
       if (a.status === 'not_started') {
         a.status = 'in_progress';
+        a.uncompletedAt = Date.now();
         markTaskUncompleted(a);
         showToast(`「${a.title}」を進行中にしました`);
       } else if (a.status === 'in_progress') {
         a.status = 'submitted';
         a.completedAt = new Date().toISOString();
+        a.uncompletedAt = null;
         markTaskCompleted(a);
         showToast(`🎉「${a.title}」を完了にしました！`);
       } else {
         a.status = 'not_started';
         a.completedAt = null;
+        a.uncompletedAt = Date.now();
         markTaskUncompleted(a);
-        showToast(`「${a.title}」を未着手に戻しました`);
+        if (currentTab === 'completed') {
+          showToast(`「${a.title}」を未着手に戻しました（未完了タブに移動）`);
+        } else {
+          showToast(`「${a.title}」を未着手に戻しました`);
+        }
       }
 
       saveAssignments();
@@ -1883,8 +1974,11 @@
           a.memo = memo;
           if (status === 'submitted') {
             if (!a.completedAt) a.completedAt = new Date().toISOString();
+            a.uncompletedAt = null;
             markTaskCompleted(a);
           } else {
+            a.completedAt = null;
+            a.uncompletedAt = Date.now();
             markTaskUncompleted(a);
           }
         }
