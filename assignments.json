@@ -440,12 +440,12 @@
     "title": "第6回講義中課題　追加問題",
     "deadline": "2026-10-22T12:15:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "講義中課題を解くために使ったプログラムの内容が正しく理解できているか確認するための問題です。講義中課題を解き終わってから挑戦し",
     "folderPath": null,
     "createdAt": "2026-10-15T14:02:39.003609",
-    "completedAt": null,
+    "completedAt": "2026-10-22T11:22:04.000785+09:00",
     "moodleUid": "658401@letus.ed.tus.ac.jp"
   },
   {
