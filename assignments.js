@@ -438,7 +438,7 @@ window.INITIAL_ASSIGNMENTS = [
     "category": "academic",
     "subject": "07数値計算",
     "title": "第6回講義中課題　追加問題",
-    "deadline": "2026-10-22T12:10:00",
+    "deadline": "2026-10-22T12:15:00",
     "submissionMethod": "LETUS",
     "status": "not_started",
     "priority": "medium",
