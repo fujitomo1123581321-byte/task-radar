@@ -864,5 +864,19 @@ window.INITIAL_ASSIGNMENTS = [
     "folderPath": null,
     "createdAt": "2026-10-21T21:28:15.345419+09:00",
     "completedAt": null
+  },
+  {
+    "id": "custom-20261022114825",
+    "category": "academic",
+    "subject": "08実験",
+    "title": "実験予習",
+    "deadline": "2026-10-23T12:00:00",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "Discordより登録",
+    "folderPath": null,
+    "createdAt": "2026-10-22T11:48:25.774071+09:00",
+    "completedAt": null
   }
 ];
