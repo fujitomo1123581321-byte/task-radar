@@ -657,7 +657,7 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "レポート課題 締め切り10/25(日)23:59(JST)",
     "deadline": "2026-10-25T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": "high",
     "memo": "演習問題2-1, 2-2, 2-3, 2-4のから少なくとも一問を解いて提出してください。  ",
     "folderPath": null,
