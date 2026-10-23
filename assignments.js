@@ -872,12 +872,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "実験予習",
     "deadline": "2026-10-23T12:00:00",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "Discordより登録",
     "folderPath": null,
     "createdAt": "2026-10-22T11:48:25.774071+09:00",
-    "completedAt": null
+    "completedAt": "2026-10-23T20:43:07.708135+09:00"
   },
   {
     "id": "custom-20261022124400",
