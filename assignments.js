@@ -702,7 +702,7 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "お金確認、discoedで執行部確認",
     "deadline": "2026-10-20T13:00",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": "medium",
     "memo": "Discordより登録",
     "folderPath": null,
