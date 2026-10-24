@@ -657,12 +657,12 @@
     "title": "レポート課題 締め切り10/25(日)23:59(JST)",
     "deadline": "2026-10-25T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "submitted",
+    "status": "in_progress",
     "priority": "high",
     "memo": "演習問題2-1, 2-2, 2-3, 2-4のから少なくとも一問を解いて提出してください。  ",
     "folderPath": null,
     "createdAt": "2026-10-19T08:11:57.264353",
-    "completedAt": "2026-10-24T18:11:57.063802+09:00",
+    "completedAt": null,
     "moodleUid": "642097@letus.ed.tus.ac.jp"
   },
   {
