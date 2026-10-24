@@ -906,5 +906,35 @@
     "folderPath": null,
     "createdAt": "2026-10-22T15:16:40.099753+09:00",
     "completedAt": null
+  },
+  {
+    "id": "letus-20261024225204-0",
+    "category": "academic",
+    "subject": "03量子力学3",
+    "title": "ノート提出６回目",
+    "deadline": "2026-10-27T12:00:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-24T22:52:04.417933",
+    "completedAt": null,
+    "moodleUid": "651384@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261024225204-1",
+    "category": "academic",
+    "subject": "11データサイエンス・ＡＩ応用基礎",
+    "title": "第7回小テスト",
+    "deadline": "2026-10-30T23:59:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "high",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-24T22:52:04.418917",
+    "completedAt": null,
+    "moodleUid": "638962@letus.ed.tus.ac.jp"
   }
 ]
