@@ -5,6 +5,9 @@ on:
     # 毎時10分に自動実行 (24時間完全自動巡回)
     - cron: '10 * * * *'
   workflow_dispatch: # 手動実行ボタン
+  push:
+    paths:
+      - '.github/workflows/**'
 
 permissions:
   contents: write # 課題データをリポジトリにコミット・プッシュする権限
