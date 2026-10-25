@@ -936,5 +936,20 @@
     "createdAt": "2026-10-24T22:52:04.418917",
     "completedAt": null,
     "moodleUid": "638962@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261025180001-0",
+    "category": "academic",
+    "subject": "02統計力学2",
+    "title": "演習問題4章発表希望者用アンケート",
+    "deadline": "2026-11-02T16:10:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "演習問題第4章の発表を希望する人はアンケートの発表希望のところに投票してください。 希望者の中からランダムに割り振ります。ただし、すでに第１、２、３章の担当になっている人は回答しないでください。 発表者は11月2日中に発表します。  締め切り2026年11月2日16:10(JST) ",
+    "folderPath": null,
+    "createdAt": "2026-10-25T18:00:01.820572",
+    "completedAt": null,
+    "moodleUid": "642107@letus.ed.tus.ac.jp"
   }
 ]
