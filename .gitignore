@@ -1,5 +1,6 @@
 # Private configuration with tokens and webhook URLs (NEVER COMMIT)
 config.json
+letus_url.txt
 
 # Python cache & temporary files
 __pycache__/

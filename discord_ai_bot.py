@@ -78,6 +78,18 @@ def load_config():
         cfg["gemini_api_key"] = os.environ.get("GEMINI_API_KEY")
     if not cfg.get("github_token"):
         cfg["github_token"] = os.environ.get("GITHUB_TOKEN")
+    if not cfg.get("letus_calendar_url"):
+        cfg["letus_calendar_url"] = os.environ.get("LETUS_CALENDAR_URL")
+
+    url_file = os.path.join(BASE_DIR, "letus_url.txt")
+    if os.path.exists(url_file):
+        try:
+            with open(url_file, "r", encoding="utf-8") as f:
+                saved = f.read().strip()
+                if saved:
+                    cfg["letus_calendar_url"] = saved
+        except Exception:
+            pass
 
     return cfg
 
@@ -1159,6 +1171,57 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(resp)
 
     def do_POST(self):
+        if self.path in ("/api/set-calendar-url", "/api/set-calendar-url/"):
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len)
+                payload = json.loads(body.decode("utf-8"))
+                secret = payload.get("secret", "")
+                expected_secret = "TASK_RADAR_SECURE_SYNC_2026"
+                if secret != expected_secret and secret != CONFIG.get("discord_bot_token"):
+                    self.send_response(403)
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Forbidden"}')
+                    return
+
+                new_url = payload.get("url", "").strip()
+                if new_url and new_url.startswith("http"):
+                    CONFIG["letus_calendar_url"] = new_url
+                    url_file = os.path.join(BASE_DIR, "letus_url.txt")
+                    with open(url_file, "w", encoding="utf-8") as f:
+                        f.write(new_url)
+
+                    # Trigger instant sync in background
+                    import sync_letus
+                    sync_res = sync_letus.fetch_and_sync() or {}
+                    new_items = sync_res.get("new_items", [])
+                    updated_count = sync_res.get("updated_count", 0)
+                    if new_items or updated_count > 0:
+                        git_push_sync(f"Auto-sync LETUS assignments via Cloud Endpoint (New: {len(new_items)}, Updated: {updated_count})")
+
+                    resp = json.dumps({"status": "ok", "message": "Calendar URL saved and sync executed", "new_items": len(new_items)}, ensure_ascii=False).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(resp)
+                    return
+                else:
+                    self.send_response(400)
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Invalid URL"}')
+                    return
+            except Exception as e:
+                resp = json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8")
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(resp)
+                return
+
         if self.path in ("/api/task-status", "/api/task-status/"):
             try:
                 content_len = int(self.headers.get("Content-Length", 0))

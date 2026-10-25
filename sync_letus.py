@@ -69,6 +69,15 @@ def load_config():
     # Prioritize environment variables (for GitHub Actions / Cloud)
     if os.environ.get("LETUS_CALENDAR_URL"):
         cfg["letus_calendar_url"] = os.environ.get("LETUS_CALENDAR_URL").strip()
+    url_file = os.path.join(BASE_DIR, "letus_url.txt")
+    if os.path.exists(url_file):
+        try:
+            with open(url_file, "r", encoding="utf-8") as f:
+                saved = f.read().strip()
+                if saved:
+                    cfg["letus_calendar_url"] = saved
+        except Exception:
+            pass
     if os.environ.get("DISCORD_WEBHOOK_URL"):
         cfg["discord_webhook_url"] = os.environ.get("DISCORD_WEBHOOK_URL").strip()
     return cfg
