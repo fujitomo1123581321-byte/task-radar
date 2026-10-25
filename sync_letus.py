@@ -166,7 +166,7 @@ def fetch_and_sync():
     
     if not url:
         print("LETUSカレンダーURLが設定されていません。")
-        return
+        return {"new_items": [], "updated_count": 0, "error": "No URL"}
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LETUSから最新課題を取得中...")
     
@@ -335,6 +335,8 @@ def fetch_and_sync():
         check_deadlines.check_and_notify()
     except Exception as e:
         pass
+
+    return {"new_items": new_items, "updated_count": updated_count}
 
 if __name__ == "__main__":
     fetch_and_sync()

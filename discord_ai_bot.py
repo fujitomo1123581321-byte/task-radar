@@ -625,8 +625,59 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
+_periodic_sync_started = False
+
+async def cloud_periodic_letus_sync():
+    """24/7 Cloud Background Loop: checks LETUS every 1 hour, auto-pushes to GitHub/Web and notifies Discord"""
+    await asyncio.sleep(45)  # Wait 45s for bot setup & port binding
+    while True:
+        try:
+            cfg = load_config()
+            cal_url = cfg.get("letus_calendar_url") or os.environ.get("LETUS_CALENDAR_URL")
+            if cal_url:
+                print(f"[{datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')}] [Cloud LETUS Sync] Starting hourly background sync...")
+                import sync_letus
+                loop = asyncio.get_running_loop()
+                result = await loop.run_in_executor(None, sync_letus.fetch_and_sync)
+                new_items = (result or {}).get("new_items", [])
+                updated_count = (result or {}).get("updated_count", 0)
+
+                if new_items or updated_count > 0:
+                    commit_msg = f"Auto-sync LETUS assignments (New: {len(new_items)}, Updated: {updated_count})"
+                    await loop.run_in_executor(None, git_push_sync, commit_msg)
+                    print(f"[Cloud LETUS Sync] Pushed to GitHub. New: {len(new_items)}, Updated: {updated_count}")
+
+                    # Notify Discord channel if new tasks found!
+                    upcoming_new = [x for x in new_items if x.get("status") != "submitted"]
+                    if upcoming_new:
+                        for guild in bot.guilds:
+                            for channel in guild.text_channels:
+                                if any(k in channel.name.lower() for k in ["課題", "タスク", "task", "todo", "bot"]):
+                                    try:
+                                        embed = discord.Embed(
+                                            title="📥 LETUS新着課題を検出しました（クラウド自動同期）",
+                                            description="\n".join([f"・**[{x.get('subject')}] {x.get('title')}**\n  締切: `{x.get('deadline')}`" for x in upcoming_new]),
+                                            color=0x2ecc71
+                                        )
+                                        embed.add_field(name="🌐 Webダッシュボード", value="[Task Radarを開く](https://fujitomo1123581321-byte.github.io/task-radar/)", inline=False)
+                                        await channel.send(embed=embed)
+                                        break
+                                    except Exception as notify_err:
+                                        print(f"[Cloud Notify Error] {notify_err}")
+                else:
+                    print("[Cloud LETUS Sync] Check complete. No changes.")
+            else:
+                print("[Cloud LETUS Sync] Skipped: LETUS_CALENDAR_URL not configured.")
+        except Exception as e:
+            print(f"[Cloud LETUS Sync Error] {e}")
+        await asyncio.sleep(3600)  # Repeat every 1 hour
+
 @bot.event
 async def on_ready():
+    global _periodic_sync_started
+    if not _periodic_sync_started:
+        _periodic_sync_started = True
+        bot.loop.create_task(cloud_periodic_letus_sync())
     print(f"==================================================")
     print(f"🤖 Bot is ONLINE: {bot.user.name} (ID: {bot.user.id})")
     print(f"🏠 Connected Guilds: {len(bot.guilds)}")
@@ -1048,6 +1099,30 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         normalized_path = self.path.split("?")[0].rstrip("/")
+        if normalized_path in ("/api/sync", "/api/sync/"):
+            try:
+                import sync_letus
+                res = sync_letus.fetch_and_sync() or {}
+                new_items = res.get("new_items", [])
+                updated_count = res.get("updated_count", 0)
+                if new_items or updated_count > 0:
+                    git_push_sync(f"Sync LETUS assignments via /api/sync (New: {len(new_items)}, Updated: {updated_count})")
+                resp = json.dumps({"status": "ok", "new_count": len(new_items), "updated_count": updated_count}, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(resp)
+                return
+            except Exception as e:
+                resp = json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8")
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(resp)
+                return
+
         if normalized_path in ("/api/assignments", "/assignments.json"):
             with DATA_LOCK:
                 assignments = load_assignments()
