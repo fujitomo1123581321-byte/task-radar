@@ -1192,15 +1192,20 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                     with open(url_file, "w", encoding="utf-8") as f:
                         f.write(new_url)
 
-                    # Trigger instant sync in background
-                    import sync_letus
-                    sync_res = sync_letus.fetch_and_sync() or {}
-                    new_items = sync_res.get("new_items", [])
-                    updated_count = sync_res.get("updated_count", 0)
-                    if new_items or updated_count > 0:
-                        git_push_sync(f"Auto-sync LETUS assignments via Cloud Endpoint (New: {len(new_items)}, Updated: {updated_count})")
+                    # Trigger instant sync in background thread
+                    def _run_bg_sync():
+                        try:
+                            import sync_letus
+                            sync_res = sync_letus.fetch_and_sync() or {}
+                            new_items = sync_res.get("new_items", [])
+                            updated_count = sync_res.get("updated_count", 0)
+                            if new_items or updated_count > 0:
+                                git_push_sync(f"Auto-sync LETUS assignments (New: {len(new_items)}, Updated: {updated_count})")
+                        except Exception as e:
+                            print(f"[BG Sync Error] {e}")
+                    threading.Thread(target=_run_bg_sync, daemon=True).start()
 
-                    resp = json.dumps({"status": "ok", "message": "Calendar URL saved and sync executed", "new_items": len(new_items)}, ensure_ascii=False).encode("utf-8")
+                    resp = json.dumps({"status": "ok", "message": "Calendar URL saved and background sync triggered"}, ensure_ascii=False).encode("utf-8")
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json; charset=utf-8")
                     self._send_cors()
