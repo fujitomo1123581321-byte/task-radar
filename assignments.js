@@ -951,5 +951,35 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-25T18:00:01.820572",
     "completedAt": null,
     "moodleUid": "642107@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261026104345-0",
+    "category": "academic",
+    "subject": "02物性論2B",
+    "title": "事後課題（１回目〜7回目まで学習した内容についてコンセプトマップを作成する",
+    "deadline": "2026-11-04T20:00:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "１ページ〜（MAX２ページ）のPDFで提出してください。もちろん手書きでもOKですが、用いる色、枠の形、線の種類、相互の位置関係を描きながら修正できるパワポ(KeyNote)等のアプリを用いて作成するとより効果的です。この課題は（０〜５）の多段階評価として形成的評価に取り込みます。みなさんの学修の達成度を端的に表す「コンセプトマップ」を楽しみにしています。 ",
+    "folderPath": null,
+    "createdAt": "2026-10-26T10:43:45.595606",
+    "completedAt": null,
+    "moodleUid": "575544@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261026104345-1",
+    "category": "academic",
+    "subject": "研究室紹介ポスター発表会",
+    "title": "アンケート",
+    "deadline": "2026-12-01T23:59:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-26T10:43:45.596767",
+    "completedAt": null,
+    "moodleUid": "570207@letus.ed.tus.ac.jp"
   }
 ];
