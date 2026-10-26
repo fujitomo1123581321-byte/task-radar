@@ -28,13 +28,6 @@ LAST_NOTIFIED_PATH = os.path.join(BASE_DIR, "last_notified.json")
 
 def load_data():
     assignments = []
-    if os.path.exists(JSON_PATH):
-        try:
-            with open(JSON_PATH, "r", encoding="utf-8") as f:
-                assignments = json.load(f)
-        except Exception:
-            pass
-            
     config = {}
     if os.path.exists(CONFIG_PATH):
         try:
@@ -44,6 +37,41 @@ def load_data():
             pass
     if os.environ.get("DISCORD_WEBHOOK_URL"):
         config["discord_webhook_url"] = os.environ.get("DISCORD_WEBHOOK_URL").strip()
+
+    # 1. スマホやWebで行われた「完了」操作を確実に反映するため、通知前にクラウドから最新状態を取得
+    cloud_endpoints = [
+        "https://task-radar-us.onrender.com/assignments.json",
+        "https://raw.githubusercontent.com/fujitomo1123581321-byte/task-radar/main/assignments.json"
+    ]
+    for url in cloud_endpoints:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "TaskRadarDeadlineChecker/1.0"})
+            with urllib.request.urlopen(req, timeout=5) as res:
+                if res.status == 200:
+                    remote_data = json.loads(res.read().decode("utf-8"))
+                    if isinstance(remote_data, list) and len(remote_data) > 0:
+                        assignments = remote_data
+                        # PCローカルのファイルも最新状態に自動更新（ズレ防止）
+                        try:
+                            with open(JSON_PATH, "w", encoding="utf-8") as f:
+                                json.dump(assignments, f, ensure_ascii=False, indent=2)
+                            js_path = os.path.join(BASE_DIR, "assignments.js")
+                            with open(js_path, "w", encoding="utf-8") as f:
+                                f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(assignments, ensure_ascii=False, indent=2) + ";\n")
+                        except Exception:
+                            pass
+                        return assignments, config
+        except Exception:
+            pass
+
+    # 2. クラウド接続不可時のフォールバック (ローカルファイル読み込み)
+    if os.path.exists(JSON_PATH):
+        try:
+            with open(JSON_PATH, "r", encoding="utf-8") as f:
+                assignments = json.load(f)
+        except Exception:
+            pass
+
     return assignments, config
 
 def notify_windows(title, message):
