@@ -657,12 +657,12 @@
     "title": "レポート課題 締め切り10/25(日)23:59(JST)",
     "deadline": "2026-10-25T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "submitted",
+    "status": "in_progress",
     "priority": "high",
     "memo": "演習問題2-1, 2-2, 2-3, 2-4のから少なくとも一問を解いて提出してください。  ",
     "folderPath": null,
     "createdAt": "2026-10-19T08:11:57.264353",
-    "completedAt": "2026-10-25T23:59:00+09:00",
+    "completedAt": null,
     "moodleUid": "642097@letus.ed.tus.ac.jp"
   },
   {
@@ -1004,12 +1004,12 @@
     "title": "常識？クイズ",
     "deadline": "2026-10-26T16:35:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-26T07:36:46.275019",
-    "completedAt": null,
+    "completedAt": "2026-10-26T16:41:17.485813+09:00",
     "moodleUid": "650196@letus.ed.tus.ac.jp"
   },
   {
