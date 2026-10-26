@@ -880,20 +880,6 @@ window.INITIAL_ASSIGNMENTS = [
     "completedAt": "2026-10-23T20:43:07.708135+09:00"
   },
   {
-    "id": "custom-20261022124400",
-    "category": "academic",
-    "subject": "データサイエンス",
-    "title": "データサイエンス 課題・予習",
-    "deadline": "2026-10-23T23:59:00",
-    "submissionMethod": "Discord Bot",
-    "status": "not_started",
-    "priority": "medium",
-    "memo": "金曜日必中",
-    "folderPath": null,
-    "createdAt": "2026-10-22T12:44:00.527891+09:00",
-    "completedAt": null
-  },
-  {
     "id": "custom-20261022151640",
     "category": "academic",
     "subject": "07数値計算",
