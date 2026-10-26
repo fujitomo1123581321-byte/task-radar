@@ -2,17 +2,30 @@
 config.json
 letus_url.txt
 last_notified.json
+last_morning_scan.json
+.letus_browser_profile/
 
 # Python cache & temporary files
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+*.log
+scratch_*.json
+inspect_letus_courses.py
+letus_exam_audit.json
+parse_audit.py
 
 # Local scripts
 *.vbs
 *.bat
 setup_github.py
+
+# Whitelist submission verification runners
+!check_letus_submissions.bat
+!check_letus_submissions.vbs
+!check_morning_submission.vbs
+!setup_submission_checker_task.ps1
 
 # OS files
 Thumbs.db

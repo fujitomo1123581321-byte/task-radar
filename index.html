@@ -325,6 +325,23 @@
       </button>
     </div>
 
+    <!-- RECENTLY COMPLETED SECTION (直近24時間・誤完了救済アコーディオン) -->
+    <div id="recentCompletedContainer" class="hidden mt-8 pt-6 border-t border-slate-800">
+      <button type="button" onclick="toggleRecentCompleted()" class="w-full flex items-center justify-between px-4 py-2.5 bg-slate-850/60 hover:bg-slate-800 rounded-xl border border-slate-700/60 transition text-left group">
+        <div class="flex items-center gap-2">
+          <span class="text-xs">✅</span>
+          <span class="text-xs font-semibold text-slate-300 group-hover:text-white">最近完了にした課題（直近24時間）</span>
+          <span id="recentCompletedCount" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-700 text-slate-300">0</span>
+        </div>
+        <svg id="recentCompletedArrow" class="w-4 h-4 text-slate-400 group-hover:text-white transition transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div id="recentCompletedList" class="hidden mt-3 space-y-2">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+
     <!-- FOOTER / HELP -->
     <footer class="pt-6 pb-12 text-center text-xs text-slate-500 border-t border-slate-800 space-y-2">
       <p>💡 チャットで「住民票取得、金曜までって登録して」「数値計算の課題出したよ」と話しかけるだけでAIが自動登録・更新します。</p>
@@ -335,6 +352,60 @@
       </div>
     </footer>
   </main>
+
+  <!-- COMPLETION CONFIRMATION MODAL (誤完了防止セーフガード) -->
+  <div id="completionConfirmModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full shadow-2xl p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base sm:text-lg font-bold text-white">提出完了にしますか？</h3>
+          <p class="text-xs text-slate-400">誤って完了にすると未完一覧から消えてしまいます</p>
+        </div>
+      </div>
+
+      <!-- Task Details Box -->
+      <div class="bg-slate-900/80 rounded-xl p-3.5 border border-slate-700/80 space-y-2">
+        <div class="flex items-center gap-2">
+          <span id="confirmTaskCategory" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">📚 学業</span>
+          <span id="confirmTaskSubject" class="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">科目名</span>
+        </div>
+        <p id="confirmTaskTitle" class="text-sm font-bold text-white break-words">課題タイトル</p>
+        <p class="text-xs text-slate-400 flex items-center gap-1">
+          <span>📅 締切:</span>
+          <span id="confirmTaskDeadline" class="font-mono text-slate-300">2026/10/30 23:59</span>
+        </p>
+      </div>
+
+      <!-- LETUS Direct Check Button -->
+      <div id="confirmLetusLinkContainer" class="hidden">
+        <a id="confirmLetusLinkBtn" href="https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming" target="_blank" rel="noopener noreferrer" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-indigo-300 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-700/60 transition group">
+          <svg class="w-4 h-4 text-indigo-400 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+          <span>🔗 LETUSで提出画面を開く（実物確認）</span>
+        </a>
+        <p class="text-[11px] text-slate-400 mt-1 text-center">※緑色の「評定のために提出済み」があるか目視確認できます</p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 pt-2">
+        <button type="button" onclick="closeCompletionConfirmModal()" class="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-300 bg-slate-700/80 hover:bg-slate-700 transition">
+          キャンセル（戻る）
+        </button>
+        <button type="button" id="confirmSubmitBtn" onclick="executeTaskCompletion()" class="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-900/30 transition flex items-center justify-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span>提出完了にする</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- ADD / EDIT MODAL -->
   <div id="assignmentModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
@@ -1502,10 +1573,49 @@
       if (list.length === 0) {
         grid.innerHTML = '';
         empty.classList.remove('hidden');
-        return;
+      } else {
+        empty.classList.add('hidden');
       }
 
-      empty.classList.add('hidden');
+      // Render Recently Completed Section (only in 'active' tab)
+      const recentContainer = document.getElementById('recentCompletedContainer');
+      const recentList = document.getElementById('recentCompletedList');
+      const recentCountBadge = document.getElementById('recentCompletedCount');
+
+      if (recentContainer && recentList && recentCountBadge) {
+        if (currentTab === 'active') {
+          const oneDayAgo = Date.now() - 24 * 3600 * 1000;
+          const recentTasks = pool.filter(a => {
+            if (a.status !== 'submitted') return false;
+            const compTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+            return compTime >= oneDayAgo;
+          });
+
+          if (recentTasks.length > 0) {
+            recentContainer.classList.remove('hidden');
+            recentCountBadge.textContent = recentTasks.length;
+            recentList.innerHTML = recentTasks.map(a => {
+              return `
+                <div class="bg-slate-850/80 border border-slate-700/60 rounded-xl p-3 flex items-center justify-between gap-3 text-xs">
+                  <div class="min-w-0 flex-1">
+                    <span class="text-[10px] text-slate-400 font-mono">${a.subject || ''}</span>
+                    <p class="font-medium text-slate-300 truncate">${a.title || '（無題）'}</p>
+                  </div>
+                  <button type="button" onclick="cycleStatus('${a.id}')" class="px-2.5 py-1 text-[11px] font-semibold text-amber-300 hover:text-amber-200 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/60 rounded-lg transition shrink-0 flex items-center gap-1">
+                    <span>↩️ 未着手に戻す</span>
+                  </button>
+                </div>
+              `;
+            }).join('');
+          } else {
+            recentContainer.classList.add('hidden');
+          }
+        } else {
+          recentContainer.classList.add('hidden');
+        }
+      }
+
+      if (list.length === 0) return;
 
       grid.innerHTML = list.map(a => {
         const color = getSubjectColor(a.subject);
@@ -1718,6 +1828,82 @@
       }
     }
 
+    // --- COMPLETION CONFIRMATION & SAFEGUARD ---
+    let _pendingCompletionTaskId = null;
+
+    function confirmCompletion(id) {
+      const a = assignments.find(x => x.id === id);
+      if (!a) return;
+
+      _pendingCompletionTaskId = id;
+      document.getElementById('confirmTaskTitle').textContent = a.title || '（無題）';
+      document.getElementById('confirmTaskSubject').textContent = a.subject || '一般';
+      
+      const dl = a.deadline ? new Date(a.deadline) : null;
+      const dlStr = dl ? `${dl.getFullYear()}/${dl.getMonth()+1}/${dl.getDate()} ${String(dl.getHours()).padStart(2,'0')}:${String(dl.getMinutes()).padStart(2,'0')}` : '設定なし';
+      document.getElementById('confirmTaskDeadline').textContent = dlStr;
+
+      const isPersonal = a.category === 'personal';
+      const catEl = document.getElementById('confirmTaskCategory');
+      if (catEl) {
+        catEl.textContent = isPersonal ? '👤 自分' : '📚 学業';
+        catEl.className = isPersonal
+          ? 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+          : 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30';
+      }
+
+      // Handle LETUS link
+      const linkBox = document.getElementById('confirmLetusLinkContainer');
+      const linkBtn = document.getElementById('confirmLetusLinkBtn');
+      if (a.letusUrl || a.submissionMethod === 'LETUS' || a.category === 'academic') {
+        const targetUrl = a.letusUrl || 'https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming';
+        if (linkBtn) linkBtn.href = targetUrl;
+        if (linkBox) linkBox.classList.remove('hidden');
+      } else {
+        if (linkBox) linkBox.classList.add('hidden');
+      }
+
+      const modal = document.getElementById('completionConfirmModal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeCompletionConfirmModal() {
+      _pendingCompletionTaskId = null;
+      const modal = document.getElementById('completionConfirmModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function executeTaskCompletion() {
+      if (!_pendingCompletionTaskId) return;
+      const a = assignments.find(x => x.id === _pendingCompletionTaskId);
+      closeCompletionConfirmModal();
+      if (!a) return;
+
+      a.status = 'submitted';
+      a.completedAt = new Date().toISOString();
+      a.uncompletedAt = null;
+      markTaskCompleted(a);
+      showToast(`🎉「${a.title}」を完了にしました！`);
+
+      saveAssignments();
+      syncStatusToCloud(a.id, a.status, a.title);
+      renderAssignments();
+    }
+
+    function toggleRecentCompleted() {
+      const list = document.getElementById('recentCompletedList');
+      const arrow = document.getElementById('recentCompletedArrow');
+      if (!list) return;
+      const isHidden = list.classList.contains('hidden');
+      if (isHidden) {
+        list.classList.remove('hidden');
+        if (arrow) arrow.classList.add('rotate-180');
+      } else {
+        list.classList.add('hidden');
+        if (arrow) arrow.classList.remove('rotate-180');
+      }
+    }
+
     // --- ACTIONS ---
     function cycleStatus(id) {
       const a = assignments.find(x => x.id === id);
@@ -1729,11 +1915,9 @@
         markTaskUncompleted(a);
         showToast(`「${a.title}」を進行中にしました`);
       } else if (a.status === 'in_progress') {
-        a.status = 'submitted';
-        a.completedAt = new Date().toISOString();
-        a.uncompletedAt = null;
-        markTaskCompleted(a);
-        showToast(`🎉「${a.title}」を完了にしました！`);
+        // Safe guard: show confirmation modal before marking submitted
+        confirmCompletion(a.id);
+        return;
       } else {
         a.status = 'not_started';
         a.completedAt = null;
