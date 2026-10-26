@@ -1012,5 +1012,20 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-26T07:36:46.275519",
     "completedAt": null,
     "moodleUid": "642098@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261026081143-0",
+    "category": "academic",
+    "subject": "05原子核物理",
+    "title": "核融合が難しい理由",
+    "deadline": "2026-10-26T17:25:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-26T08:11:43.462595",
+    "completedAt": null,
+    "moodleUid": "650197@letus.ed.tus.ac.jp"
   }
 ];
