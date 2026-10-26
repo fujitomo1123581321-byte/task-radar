@@ -760,7 +760,7 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "ミニテスト6(締切；10月28日)",
     "deadline": "2026-10-28T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": "high",
     "memo": "LETUSより自動同期",
     "folderPath": null,
