@@ -1738,19 +1738,22 @@
     }
 
     // --- CLOUD SYNC HELPER (CLOUD_SYNC_BASE is defined globally at top) ---
-    function syncStatusToCloud(taskId, status, title = null) {
-      if (!taskId) return;
-      fetch(`${CLOUD_SYNC_BASE}/api/task-status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: taskId, status: status, title: title })
-      }).then(res => {
+    async function syncStatusToCloud(taskId, status, title = null) {
+      if (!taskId) return false;
+      try {
+        const res = await fetch(`${CLOUD_SYNC_BASE}/api/task-status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: taskId, status: status, title: title })
+        });
         if (res.ok) {
           console.log(`[Cloud Task Sync] Successfully synced task ${taskId} (${title || ''}) -> ${status}`);
+          return true;
         }
-      }).catch(err => {
-        console.warn('[Cloud Task Sync Notice] Cloud server ping skipped:', err);
-      });
+      } catch (err) {
+        console.warn('[Cloud Task Sync Warning] Cloud server ping skipped:', err);
+      }
+      return false;
     }
 
     function syncDeleteToCloud(taskId, title) {
@@ -1873,21 +1876,49 @@
       if (modal) modal.classList.add('hidden');
     }
 
-    function executeTaskCompletion() {
+    async function executeTaskCompletion() {
       if (!_pendingCompletionTaskId) return;
       const a = assignments.find(x => x.id === _pendingCompletionTaskId);
-      closeCompletionConfirmModal();
-      if (!a) return;
+      if (!a) {
+        closeCompletionConfirmModal();
+        return;
+      }
+
+      const submitBtn = document.getElementById('confirmSubmitBtn');
+      const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+          <svg class="animate-spin w-4 h-4 text-white shrink-0" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>クラウド同期中...</span>
+        `;
+      }
+
+      // Fast cloud sync (takes ~150ms when Render is awake)
+      const synced = await syncStatusToCloud(a.id, 'submitted', a.title);
 
       a.status = 'submitted';
       a.completedAt = new Date().toISOString();
       a.uncompletedAt = null;
       markTaskCompleted(a);
-      showToast(`🎉「${a.title}」を完了にしました！`);
 
       saveAssignments();
-      syncStatusToCloud(a.id, a.status, a.title);
       renderAssignments();
+      closeCompletionConfirmModal();
+
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalHtml;
+      }
+
+      if (synced) {
+        showToast(`🎉「${a.title}」を完了にしました（クラウド同期完了 ✅）`);
+      } else {
+        showToast(`🎉「${a.title}」を完了にしました（端末保存完了）`);
+      }
     }
 
     function toggleRecentCompleted() {

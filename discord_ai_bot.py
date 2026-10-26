@@ -270,8 +270,8 @@ def _execute_debounced_push():
     print(f"[Debounced Git Sync] Starting bundled push to GitHub: {combined_msg}")
     threading.Thread(target=git_push_sync, args=(combined_msg,), daemon=True).start()
 
-def schedule_git_push(commit_msg: str, delay: float = 60.0):
-    """Debounce multiple rapid actions into a single GitHub commit after delay seconds"""
+def schedule_git_push(commit_msg: str, delay: float = 3.0):
+    """Debounce multiple rapid actions into a single GitHub commit after delay seconds (fast 3s sync)"""
     global _git_push_timer, _pending_commit_msgs
     with _git_push_timer_lock:
         if commit_msg:
@@ -584,7 +584,7 @@ class TaskConfirmView(discord.ui.View):
         clear_user_session(self.user_id)
         clear_chat_history(self.user_id)
 
-        schedule_git_push(f"Add task via Discord: {title}", delay=60.0)
+        schedule_git_push(f"Add task via Discord: {title}", delay=3.0)
 
         try:
             dl_dt = datetime.strptime(dl, "%Y-%m-%dT%H:%M:%S")
@@ -842,7 +842,7 @@ async def on_message(message: discord.Message):
                         if completed_targets:
                             save_assignments(assignments)
                             titles = [t.get("title") for t in completed_targets]
-                            schedule_git_push(f"Complete task(s) via Discord: {', '.join(titles)}", delay=60.0)
+                            schedule_git_push(f"Complete task(s) via Discord: {', '.join(titles)}", delay=3.0)
 
                     if completed_targets:
                         if len(completed_targets) == 1:
@@ -1280,7 +1280,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                     if updated_targets:
                         save_assignments(assignments)
                         summary_title = updated_targets[0].get('title', 'task')
-                        schedule_git_push(f"Update {len(updated_targets)} task(s) status via Web: {summary_title}", delay=60.0)
+                        schedule_git_push(f"Update {len(updated_targets)} task(s) status via Web: {summary_title}", delay=3.0)
 
                         resp = json.dumps({
                             "status": "ok",
@@ -1316,7 +1316,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                     assignments = load_assignments()
                     new_assignments = [a for a in assignments if str(a.get("id")) != str(task_id)]
                     save_assignments(new_assignments)
-                    schedule_git_push(f"Delete task '{title}' via Web", delay=60.0)
+                    schedule_git_push(f"Delete task '{title}' via Web", delay=3.0)
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -1363,7 +1363,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                             except Exception:
                                 pass
 
-                    schedule_git_push(f"Ignore task '{title}' via Web", delay=60.0)
+                    schedule_git_push(f"Ignore task '{title}' via Web", delay=3.0)
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -1405,7 +1405,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                     assignments = [a for a in assignments if str(a.get("id")) != str(task["id"])]
                     assignments.append(task)
                     save_assignments(assignments)
-                    schedule_git_push(f"Add task via Web: {title}", delay=60.0)
+                    schedule_git_push(f"Add task via Web: {title}", delay=3.0)
 
                 resp = json.dumps({"status": "ok", "action": "added", "task": task}, ensure_ascii=False).encode("utf-8")
                 self.send_response(200)
@@ -1455,7 +1455,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                             target["completedAt"] = None
 
                         save_assignments(assignments)
-                        schedule_git_push(f"Update task '{target.get('title')}' details via Web", delay=60.0)
+                        schedule_git_push(f"Update task '{target.get('title')}' details via Web", delay=3.0)
 
                         resp = json.dumps({"status": "ok", "action": "updated", "task": target}, ensure_ascii=False).encode("utf-8")
                         self.send_response(200)

@@ -1,0 +1,26 @@
+name: 24/7 Render Keep-Alive Heartbeat
+
+on:
+  schedule:
+    # 10分おきに外部からRenderの/healthを叩き、15分スリープを完全防止
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Send External HTTP Ping to Render
+        run: |
+          echo "Pinging https://task-radar-us.onrender.com/health at $(date -u)"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 20 "https://task-radar-us.onrender.com/health" || echo "FAILED")
+          echo "Render Health Endpoint Response: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Render is active and awake!"
+          else
+            echo "⚠️ Response was $STATUS, retrying once..."
+            sleep 5
+            curl -s -f -m 30 "https://task-radar-us.onrender.com/health" || true
+          fi
