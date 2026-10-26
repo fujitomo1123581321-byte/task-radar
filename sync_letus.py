@@ -338,13 +338,6 @@ def fetch_and_sync():
         except Exception:
             pass
 
-    # Also check imminent deadlines and notify
-    try:
-        import check_deadlines
-        check_deadlines.check_and_notify()
-    except Exception as e:
-        pass
-
     return {"new_items": new_items, "updated_count": updated_count}
 
 if __name__ == "__main__":

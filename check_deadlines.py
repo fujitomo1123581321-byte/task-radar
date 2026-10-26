@@ -1,12 +1,15 @@
 """
 課題締切リマインダースクリプト (check_deadlines.py)
-- 未提出の課題の中から「締切が近いもの (24時間以内 / 3日以内)」を検知
+- 未提出の課題の中から「締切が近いもの (24時間以内 / 3日以内)」および期限超過を検知
 - PCにWindowsトースト通知を発行
-- (設定があれば) Discord / LINE / Webhook 経由でスマホにも通知を送信
+- Discord Webhook経由でスマホへリマインダー通知を送信
+  ※ スパム防止のため、定期通知は「朝(08:00 JST)」と「夜(19:00 JST)」の1日2回のみ配信
+  ※ 複数メッセージを1つに統合してスッキリ配信
 """
 import os
 import sys
 import json
+import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
@@ -21,6 +24,7 @@ if sys.platform == 'win32':
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JSON_PATH = os.path.join(BASE_DIR, "assignments.json")
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+LAST_NOTIFIED_PATH = os.path.join(BASE_DIR, "last_notified.json")
 
 def load_data():
     assignments = []
@@ -61,87 +65,110 @@ def notify_windows(title, message):
     except Exception:
         pass
 
-def notify_discord(webhook_url, title, items):
+def send_consolidated_discord_notification(webhook_url, overdue, urgent_24h, urgent_3d, jst_now):
     if not webhook_url or not webhook_url.startswith("http"):
         return
-    try:
-        fields = []
-        for a in items[:8]:
+
+    fields = []
+
+    # 1. Overdue section (Max 4 items)
+    if overdue:
+        lines = []
+        for a in overdue[:4]:
             tag = "[自分]" if a.get("category") == "personal" else "[学業]"
-            subject = a.get("subject", "学業")
+            sub = a.get("subject", "学業")
             dl = a.get("deadline", "").replace("T", " ")[:16]
             rem = a.get("remaining_text", "")
-            method = a.get("submissionMethod", "LETUS")
-            
-            fname = f"📌 {tag} {subject}: {a.get('title')}"
-            if len(fname) > 250:
-                fname = fname[:247] + "..."
-            fval = f"⏳ **{rem}** | 📅 締切: `{dl}` | 提出先: {method}"
-            if len(fval) > 1000:
-                fval = fval[:997] + "..."
-            fields.append({
-                "name": fname,
-                "value": fval,
-                "inline": False
-            })
+            lines.append(f"• **{tag} {sub}: {a.get('title')}**\n  💀 {rem} (締切: `{dl}`)")
+        fields.append({
+            "name": f"🚨 【期限超過】({len(overdue)}件)",
+            "value": "\n".join(lines)[:1000],
+            "inline": False
+        })
 
-        is_overdue = any(a.get("total_seconds", 1) <= 0 for a in items)
-        is_emergency = any(0 < a.get("total_seconds", 999999) <= 24 * 3600 for a in items)
-        embed_color = 0x991B1B if is_overdue else (0xEF4444 if is_emergency else 0xF59E0B) # Deep red for overdue, red for emergency, amber for 3d
+    # 2. 24h Urgent section (Max 4 items)
+    if urgent_24h:
+        lines = []
+        for a in urgent_24h[:4]:
+            tag = "[自分]" if a.get("category") == "personal" else "[学業]"
+            sub = a.get("subject", "学業")
+            dl = a.get("deadline", "").replace("T", " ")[:16]
+            rem = a.get("remaining_text", "")
+            lines.append(f"• **{tag} {sub}: {a.get('title')}**\n  ⏰ **{rem}** (締切: `{dl}`)")
+        fields.append({
+            "name": f"⏰ 【24時間以内に締切】({len(urgent_24h)}件)",
+            "value": "\n".join(lines)[:1000],
+            "inline": False
+        })
 
-        description = "⚠️ **以下の課題・タスクは既に提出期限を過ぎています！**\n提出済みならダッシュボードで完了にし、未提出なら至急確認してください。\n🔗 [LETUSカレンダーを開く](https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming)" if is_overdue else "未提出の課題・タスク一覧です。提出はお早めに！\n🔗 [LETUSカレンダーを開く](https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming)"
+    # 3. 3-day Urgent section (Max 4 items)
+    if urgent_3d:
+        lines = []
+        for a in urgent_3d[:4]:
+            tag = "[自分]" if a.get("category") == "personal" else "[学業]"
+            sub = a.get("subject", "学業")
+            dl = a.get("deadline", "").replace("T", " ")[:16]
+            rem = a.get("remaining_text", "")
+            lines.append(f"• **{tag} {sub}: {a.get('title')}**\n  ⏳ {rem} (締切: `{dl}`)")
+        fields.append({
+            "name": f"📅 【3日以内に締切】({len(urgent_3d)}件)",
+            "value": "\n".join(lines)[:1000],
+            "inline": False
+        })
 
-        payload = {
-            "username": "🎯 課題・タスク提出期限レーダー",
-            "avatar_url": "https://cdn-icons-png.flaticon.com/512/2921/2921222.png",
-            "embeds": [{
-                "title": title,
-                "description": description,
-                "color": embed_color,
-                "fields": fields,
-                "footer": {
-                    "text": "提出後はダッシュボードで完了にしてね！ • 課題提出期限レーダー"
-                },
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }]
-        }
+    if not fields:
+        return
+
+    # Determine embed color and title
+    if overdue:
+        embed_color = 0x991B1B # Deep Red
+        title_prefix = "🚨 【締切超過・至急確認】"
+    elif urgent_24h:
+        embed_color = 0xEF4444 # Red
+        title_prefix = "⏰ 【本日・明日締切】"
+    else:
+        embed_color = 0xF59E0B # Amber
+        title_prefix = "📅 【今週の提出リマインダー】"
+
+    hour = jst_now.hour
+    time_label = "朝の定期リマインド" if hour < 12 else ("夜の定期リマインド" if hour >= 18 else "定期リマインド")
+    embed_title = f"{title_prefix} 課題・タスク状況 ({time_label})"
+
+    payload = {
+        "username": "🎯 課題・タスク提出期限レーダー",
+        "avatar_url": "https://cdn-icons-png.flaticon.com/512/2921/2921222.png",
+        "embeds": [{
+            "title": embed_title,
+            "description": "未完了のタスク一覧です。提出後はダッシュボードで完了にしてね！\n🌐 [Webダッシュボードを開く](https://fujitomo1123581321-byte.github.io/task-radar/) • 🔗 [LETUSカレンダー](https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming)",
+            "color": embed_color,
+            "fields": fields,
+            "footer": {
+                "text": f"配信時刻: {jst_now.strftime('%H:%M')} JST • 毎朝8時と夜19時に配信"
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }]
+    }
+
+    try:
         req = urllib.request.Request(
             webhook_url,
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json", "User-Agent": "AssignmentRadar/1.0"}
         )
         urllib.request.urlopen(req, timeout=10)
-        print("  [Discord] スマホ宛てに通知を送信しました！")
+        print("  [Discord] 統合リマインダー通知を送信しました！")
+
+        # Save last notified timestamp
+        try:
+            with open(LAST_NOTIFIED_PATH, "w", encoding="utf-8") as f:
+                json.dump({"timestamp": time.time(), "time_str": jst_now.strftime("%Y-%m-%d %H:%M:%S")}, f)
+        except Exception:
+            pass
     except Exception as e:
         print(f"  [Discord送信エラー]: {e}")
 
-def test_discord(webhook_url):
-    try:
-        payload = {
-            "username": "🎯 課題・タスク提出期限レーダー",
-            "avatar_url": "https://cdn-icons-png.flaticon.com/512/2921/2921222.png",
-            "embeds": [{
-                "title": "🎉 Discord通知の連携に成功しました！",
-                "description": "このチャンネルに、締切が近い未提出課題が自動で届くようになります。\nスマホのDiscordアプリでこのチャンネルの通知を「すべてのメッセージ」にしておくと、外出先でもロック画面に通知が届きます！",
-                "color": 0x10B981, # Emerald
-                "footer": {"text": "課題提出期限レーダー 連携テスト"}
-            }]
-        }
-        req = urllib.request.Request(
-            webhook_url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json", "User-Agent": "AssignmentRadar/1.0"}
-        )
-        urllib.request.urlopen(req, timeout=10)
-        print("テスト通知をDiscordに送信しました！")
-        return True
-    except Exception as e:
-        print(f"Discordテスト送信エラー: {e}")
-        return False
-
-def check_and_notify():
+def check_and_notify(force_discord=False):
     assignments, config = load_data()
-    # Always use Japan Standard Time (JST, UTC+9) regardless of host OS timezone
     jst = timezone(timedelta(hours=9))
     now = datetime.now(jst).replace(tzinfo=None)
 
@@ -168,7 +195,7 @@ def check_and_notify():
         if total_seconds <= 0:
             # Overdue but unsubmitted
             days_ago = abs(int(total_seconds // 86400))
-            a["remaining_text"] = f"⚠️ {days_ago}日前に締切超過" if days_ago > 0 else "⚠️ 本日締切超過"
+            a["remaining_text"] = f"{days_ago}日前に締切超過" if days_ago > 0 else "本日締切超過"
             a["total_seconds"] = total_seconds
             overdue.append(a)
             continue
@@ -192,37 +219,50 @@ def check_and_notify():
 
     print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] 締切チェック結果: 期限超過 {len(overdue)}件, 24時間以内 {len(urgent_24h)}件, 3日以内 {len(urgent_3d)}件")
 
-    # 1. Windows PC Toast Notification
+    # 1. Windows PC Toast Notification (only if on local PC)
     if overdue:
         first = overdue[0]
         title = f"🚨【期限超過の未完了課題】{len(overdue)}件が締切を過ぎています"
         msg = f"「{first.get('subject')}: {first.get('title')}」 ({first.get('remaining_text')})"
-        print(f"  [PC通知] {title} - {msg}")
         notify_windows(title, msg)
     elif urgent_24h:
         first = urgent_24h[0]
         title = f"🚨【提出期限が迫っています】あと{len(urgent_24h)}件が24時間以内！"
         msg = f"「{first.get('subject')}: {first.get('title')}」 ({first.get('remaining_text')})"
-        print(f"  [PC通知] {title} - {msg}")
         notify_windows(title, msg)
-    elif urgent_3d:
-        first = urgent_3d[0]
-        title = f"⚠️【今週提出の課題】あと{len(urgent_3d)}件が3日以内です"
-        msg = f"「{first.get('subject')}: {first.get('title')}」 ({first.get('remaining_text')})"
-        print(f"  [PC通知] {title} - {msg}")
-        notify_windows(title, msg)
-    else:
-        print("  直近の緊急課題はありません。順調です！")
 
-    # 2. Discord / Smartphone Notification (if webhook URL configured)
+    # 2. Discord Smartphone Notification (Smart Throttled)
     discord_url = config.get("discord_webhook_url", "").strip()
-    if discord_url:
-        if overdue:
-            notify_discord(discord_url, f"🚨【提出期限超過】未提出の課題・タスクが {len(overdue)} 件あります！", overdue)
-        if urgent_24h:
-            notify_discord(discord_url, "🚨【提出期限アラート】24時間以内に締切の課題があります！", urgent_24h)
-        elif urgent_3d:
-            notify_discord(discord_url, "⚠️【提出期限リマインド】3日以内に締切の課題があります", urgent_3d)
+    if not discord_url:
+        return
+
+    # Check if we should send Discord notification now
+    # Permitted hours in JST: Morning (8:00 - 8:59 JST) and Evening (19:00 - 19:59 JST)
+    current_hour = now.hour
+    is_in_schedule_window = current_hour in (8, 19)
+
+    # Check 4-hour cooldown
+    is_cooldown_ok = True
+    if os.path.exists(LAST_NOTIFIED_PATH):
+        try:
+            with open(LAST_NOTIFIED_PATH, "r", encoding="utf-8") as f:
+                last_data = json.load(f)
+                if time.time() - last_data.get("timestamp", 0) < 4 * 3600:
+                    is_cooldown_ok = False
+        except Exception:
+            pass
+
+    if force_discord or (is_in_schedule_window and is_cooldown_ok):
+        if overdue or urgent_24h or urgent_3d:
+            send_consolidated_discord_notification(discord_url, overdue, urgent_24h, urgent_3d, now)
+        else:
+            print("  [Discord] 緊急の未提出課題はありません。通知をスキップしました。")
+    else:
+        if not is_in_schedule_window:
+            print(f"  [Discord通知スキップ] 現在JST {current_hour}時。定期リマインダーは朝(8時)と夜(19時)のみ配信します（毎時スパム防止）。")
+        elif not is_cooldown_ok:
+            print("  [Discord通知スキップ] 直近4時間以内に送信済みのため重複防止でスキップしました。")
 
 if __name__ == "__main__":
-    check_and_notify()
+    force = "--force" in sys.argv
+    check_and_notify(force_discord=force)
