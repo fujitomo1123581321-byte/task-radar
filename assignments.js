@@ -830,7 +830,7 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "シグマ 14-24mm 曇り確認",
     "deadline": "2026-10-25T23:59:00",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": "medium",
     "memo": "Discordより登録",
     "folderPath": null,
