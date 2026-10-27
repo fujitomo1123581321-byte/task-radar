@@ -1027,5 +1027,20 @@
     "createdAt": "2026-10-26T08:12:40.187546",
     "completedAt": "2026-10-26T17:38:55.589224+09:00",
     "moodleUid": "650197@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261027044328-0",
+    "category": "academic",
+    "subject": "04天体物理学",
+    "title": "課題 10/27",
+    "deadline": "2026-10-27T15:00:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-27T04:43:28.559977",
+    "completedAt": null,
+    "moodleUid": "660202@letus.ed.tus.ac.jp"
   }
 ]
