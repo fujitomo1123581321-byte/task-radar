@@ -743,7 +743,7 @@ window.INITIAL_ASSIGNMENTS = [
     "category": "academic",
     "subject": "03量子力学3",
     "title": "個人テスト１",
-    "deadline": "2026-10-20T15:05:00",
+    "deadline": "2026-10-27T15:07:00",
     "submissionMethod": "LETUS",
     "status": "submitted",
     "priority": "high",
