@@ -425,12 +425,12 @@
     "title": "実験⑤(D直前) 前組",
     "deadline": "2026-10-30T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "in_progress",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-15T04:25:35.208538",
-    "completedAt": null,
+    "completedAt": "2026-10-28T15:30:13.500943+09:00",
     "moodleUid": "577516@letus.ed.tus.ac.jp"
   },
   {
