@@ -828,11 +828,11 @@ window.INITIAL_ASSIGNMENTS = [
     "category": "personal",
     "subject": "個人",
     "title": "シグマ 14-24mm 曇り確認",
-    "deadline": "2026-10-25T23:59:00",
+    "deadline": "2026-10-25T23:59",
     "submissionMethod": "Discord Bot",
     "status": "in_progress",
     "priority": "medium",
-    "memo": "Discordより登録",
+    "memo": "Discordより登録\n見た感じ曇ってなさそうだった",
     "folderPath": null,
     "createdAt": "2026-10-21T12:13:47.614281+09:00",
     "completedAt": null
