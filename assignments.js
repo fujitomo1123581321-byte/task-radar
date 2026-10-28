@@ -900,7 +900,7 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "ノート提出６回目",
     "deadline": "2026-10-27T12:00:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
