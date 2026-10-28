@@ -1025,7 +1025,7 @@ window.INITIAL_ASSIGNMENTS = [
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-26T08:12:40.187546",
-    "completedAt": "2026-10-28T13:01:49.792287+09:00",
+    "completedAt": "2026-10-28T13:01:57.934230+09:00",
     "moodleUid": "650197@letus.ed.tus.ac.jp"
   },
   {
