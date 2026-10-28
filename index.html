@@ -394,8 +394,11 @@
 
       <!-- Action Buttons -->
       <div class="flex items-center gap-2 pt-2">
-        <button type="button" onclick="closeCompletionConfirmModal()" class="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-300 bg-slate-700/80 hover:bg-slate-700 transition">
-          キャンセル（戻る）
+        <button type="button" onclick="closeCompletionConfirmModal()" class="px-3 py-2.5 rounded-xl text-xs font-bold text-slate-300 bg-slate-700/80 hover:bg-slate-700 transition">
+          キャンセル
+        </button>
+        <button type="button" onclick="executeTaskInProgress()" class="px-3 py-2.5 rounded-xl text-xs font-bold text-amber-300 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-700/60 transition">
+          ⏳ 進行中にする
         </button>
         <button type="button" id="confirmSubmitBtn" onclick="executeTaskCompletion()" class="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-900/30 transition flex items-center justify-center gap-1.5">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1141,49 +1144,22 @@
                   || (serverItem.moodleUid && localByUid.get(serverItem.moodleUid.trim()))
                   || (serverItem.title && localByTitle.get(serverItem.title.trim()));
 
-                const uncompletedEntry = (serverItem.id && uncompletedMap[String(serverItem.id)])
-                  || (serverItem.moodleUid && uncompletedMap[serverItem.moodleUid.trim()])
-                  || (serverItem.title && uncompletedMap[serverItem.title.trim()]);
-
-                // 1. Check if user explicitly marked this uncompleted
-                if (uncompletedEntry) {
-                  const sCompletedTime = serverItem.completedAt ? new Date(serverItem.completedAt).getTime() : 0;
-                  if (sCompletedTime <= uncompletedEntry.uncompletedAt) {
-                    // Local uncompletion is newer! Keep local uncompleted status and sync to cloud if server differs
-                    if (serverItem.status === 'submitted') {
-                      throttledCloudStatusSync(serverItem.id, uncompletedEntry.status, serverItem.title);
-                    }
-                    return {
-                      ...serverItem,
-                      status: uncompletedEntry.status,
-                      completedAt: null
-                    };
-                  }
-                }
-
+                // 1. If server marked this task submitted, server is authoritative!
                 if (serverItem.status === 'submitted') {
-                  // If localItem was changed to uncompleted locally
-                  if (localItem && localItem.status !== 'submitted') {
-                    const localTime = localItem.uncompletedAt || (localItem._updatedAt || Date.now());
-                    const sCompletedTime = serverItem.completedAt ? new Date(serverItem.completedAt).getTime() : 0;
-                    if (sCompletedTime <= localTime) {
-                      throttledCloudStatusSync(serverItem.id, localItem.status, serverItem.title);
-                      return { ...serverItem, status: localItem.status, completedAt: null };
-                    }
-                  }
-                  return serverItem;
-                } else {
-                  // Server has not_started or in_progress
-                  if (localItem && localItem.status === 'submitted') {
-                    // Locally submitted - sync to cloud
-                    throttledCloudStatusSync(serverItem.id, 'submitted', serverItem.title);
-                    return { ...serverItem, status: 'submitted', completedAt: localItem.completedAt || new Date().toISOString() };
-                  }
-                  if (localItem && localItem.status === 'in_progress') {
-                    return { ...serverItem, status: 'in_progress', completedAt: null };
-                  }
                   return serverItem;
                 }
+
+                // 2. If client just submitted this locally and cloud push is still pending, keep submitted
+                if (localItem && localItem.status === 'submitted') {
+                  return { ...serverItem, status: 'submitted', completedAt: localItem.completedAt || new Date().toISOString() };
+                }
+
+                // 3. If client has in_progress locally and server is not_started, keep in_progress
+                if (localItem && localItem.status === 'in_progress') {
+                  return { ...serverItem, status: 'in_progress' };
+                }
+
+                return serverItem;
               });
 
               // Keep local-only custom tasks (e.g. personal tasks created on web not yet in serverData)
@@ -1935,18 +1911,31 @@
       }
     }
 
+    function executeTaskInProgress() {
+      if (!_pendingCompletionTaskId) return;
+      const a = assignments.find(x => x.id === _pendingCompletionTaskId);
+      if (!a) {
+        closeCompletionConfirmModal();
+        return;
+      }
+      a.status = 'in_progress';
+      a.completedAt = null;
+      a.uncompletedAt = Date.now();
+      markTaskUncompleted(a);
+      saveAssignments();
+      renderAssignments();
+      closeCompletionConfirmModal();
+      syncStatusToCloud(a.id, 'in_progress', a.title);
+      showToast(`「${a.title}」を進行中にしました`);
+    }
+
     // --- ACTIONS ---
     function cycleStatus(id) {
       const a = assignments.find(x => x.id === id);
       if (!a) return;
 
-      if (a.status === 'not_started') {
-        a.status = 'in_progress';
-        a.uncompletedAt = Date.now();
-        markTaskUncompleted(a);
-        showToast(`「${a.title}」を進行中にしました`);
-      } else if (a.status === 'in_progress') {
-        // Safe guard: show confirmation modal before marking submitted
+      if (a.status === 'not_started' || a.status === 'in_progress') {
+        // Direct safe guard: show modal so user can choose "提出完了にする" directly
         confirmCompletion(a.id);
         return;
       } else {
@@ -1962,6 +1951,7 @@
       }
 
       saveAssignments();
+      renderAssignments();
       syncStatusToCloud(a.id, a.status, a.title);
     }
 

@@ -1348,6 +1348,11 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                                     break
 
                         if target and new_status:
+                            # Safeguard: protect submitted tasks from accidental demotion to in_progress
+                            if target.get("status") == "submitted" and new_status == "in_progress":
+                                print(f"[Task Status Protection] Protected submitted task '{target.get('title')}' from demotion to in_progress")
+                                continue
+
                             target["status"] = new_status
                             if new_status == "submitted":
                                 target["completedAt"] = datetime.now(JST).isoformat()
