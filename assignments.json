@@ -455,12 +455,12 @@
     "title": "6回目のレポート課題提出　重なりがないと個別粒子になっていることを示せ。",
     "deadline": "2026-10-28T20:00:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-15T14:02:39.003781",
-    "completedAt": null,
+    "completedAt": "2026-10-28T16:32:24.962256+09:00",
     "moodleUid": "575541@letus.ed.tus.ac.jp"
   },
   {
