@@ -801,7 +801,7 @@ window.INITIAL_ASSIGNMENTS = [
     "category": "personal",
     "subject": "個人",
     "title": "返金申請",
-    "deadline": "2026-10-25T23:59:59",
+    "deadline": "2026-10-31T23:59",
     "submissionMethod": "Discord Bot",
     "status": "not_started",
     "priority": "medium",
