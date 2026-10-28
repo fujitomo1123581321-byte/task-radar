@@ -558,10 +558,10 @@ window.INITIAL_ASSIGNMENTS = [
     "deadline": "2026-10-31T23:59",
     "submissionMethod": "LETUS",
     "priority": "medium",
-    "status": "not_started",
+    "status": "submitted",
     "memo": "Playwright 自動テスト作成メモ",
     "createdAt": "2026-10-18T16:34:02.235Z",
-    "completedAt": null
+    "completedAt": "2026-10-28T18:53:30.768709+09:00"
   },
   {
     "id": "custom-20261019095214",
