@@ -470,12 +470,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "6回目のレポート課題提出　授業で示した行列要素の計算",
     "deadline": "2026-10-28T20:00:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-15T14:02:39.003874",
-    "completedAt": null,
+    "completedAt": "2026-10-28T13:04:00.438304+09:00",
     "moodleUid": "575542@letus.ed.tus.ac.jp"
   },
   {
@@ -657,12 +657,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "レポート課題 締め切り10/25(日)23:59(JST)",
     "deadline": "2026-10-25T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "submitted",
+    "status": "in_progress",
     "priority": "high",
     "memo": "演習問題2-1, 2-2, 2-3, 2-4のから少なくとも一問を解いて提出してください。  ",
     "folderPath": null,
     "createdAt": "2026-10-19T08:11:57.264353",
-    "completedAt": "2026-10-28T13:01:41.546279+09:00",
+    "completedAt": null,
     "moodleUid": "642097@letus.ed.tus.ac.jp"
   },
   {
@@ -900,12 +900,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "ノート提出６回目",
     "deadline": "2026-10-27T12:00:00",
     "submissionMethod": "LETUS",
-    "status": "submitted",
+    "status": "not_started",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-24T22:52:04.417933",
-    "completedAt": "2026-10-28T13:02:05.573597+09:00",
+    "completedAt": null,
     "moodleUid": "651384@letus.ed.tus.ac.jp"
   },
   {
@@ -1020,12 +1020,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "核融合が難しい理由",
     "deadline": "2026-10-26T17:25:00",
     "submissionMethod": "LETUS",
-    "status": "submitted",
+    "status": "not_started",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-26T08:12:40.187546",
-    "completedAt": "2026-10-28T13:01:57.934230+09:00",
+    "completedAt": null,
     "moodleUid": "650197@letus.ed.tus.ac.jp"
   },
   {
@@ -1035,12 +1035,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "課題 10/27",
     "deadline": "2026-10-27T15:00:00",
     "submissionMethod": "LETUS",
-    "status": "submitted",
+    "status": "not_started",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-27T04:43:28.559977",
-    "completedAt": "2026-10-28T13:03:38.885387+09:00",
+    "completedAt": null,
     "moodleUid": "660202@letus.ed.tus.ac.jp"
   }
 ];
