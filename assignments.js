@@ -657,12 +657,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "レポート課題 締め切り10/25(日)23:59(JST)",
     "deadline": "2026-10-25T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "in_progress",
+    "status": "submitted",
     "priority": "high",
     "memo": "演習問題2-1, 2-2, 2-3, 2-4のから少なくとも一問を解いて提出してください。  ",
     "folderPath": null,
     "createdAt": "2026-10-19T08:11:57.264353",
-    "completedAt": null,
+    "completedAt": "2026-10-25T23:59:00",
     "moodleUid": "642097@letus.ed.tus.ac.jp"
   },
   {
@@ -1020,12 +1020,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "核融合が難しい理由",
     "deadline": "2026-10-26T17:25:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-26T08:12:40.187546",
-    "completedAt": null,
+    "completedAt": "2026-10-26T17:25:00",
     "moodleUid": "650197@letus.ed.tus.ac.jp"
   },
   {

@@ -101,18 +101,111 @@ DATA_LOCK = threading.RLock()
 _git_push_timer = None
 _pending_commit_msgs = []
 _git_push_timer_lock = threading.Lock()
+_last_remote_sync_time = 0
+REMOTE_SYNC_TTL = 30  # 30 seconds cache for read endpoints
+
+def parse_deadline_dt(dl_str):
+    """Safely parse deadline strings of length 16 (YYYY-MM-DDTHH:MM) or 19+."""
+    if not dl_str:
+        return None
+    s = str(dl_str)[:19]
+    if len(s) == 16:
+        s += ":00"
+    try:
+        return datetime.strptime(s, "%Y-%m-%dT%H:%M:%S")
+    except Exception:
+        try:
+            return datetime.fromisoformat(s)
+        except Exception:
+            return None
 
 def fetch_remote_assignments():
+    """Fetch real-time assignments from GitHub API directly (or raw CDN fallback)."""
+    gh_token = CONFIG.get("github_token") or os.environ.get("GITHUB_TOKEN")
+    if gh_token:
+        try:
+            url = "https://api.github.com/repos/fujitomo1123581321-byte/task-radar/contents/assignments.json"
+            req = urllib.request.Request(url, headers={
+                "Authorization": f"Bearer {gh_token}",
+                "User-Agent": "TaskRadarBot",
+                "Accept": "application/vnd.github.v3+json"
+            })
+            with urllib.request.urlopen(req, timeout=5) as res:
+                data = json.loads(res.read().decode("utf-8"))
+                content = base64.b64decode(data.get("content", "")).decode("utf-8")
+                return json.loads(content)
+        except Exception as e:
+            print(f"[Remote Fetch API Notice] {e}")
+
     try:
         url = f"https://raw.githubusercontent.com/fujitomo1123581321-byte/task-radar/main/assignments.json?_={int(time.time())}"
-        req = urllib.request.Request(url, headers={"User-Agent": "TaskRadarBot"})
+        req = urllib.request.Request(url, headers={"User-Agent": "TaskRadarBot", "Cache-Control": "no-cache"})
         with urllib.request.urlopen(req, timeout=5) as res:
             return json.loads(res.read().decode("utf-8"))
-    except Exception:
+    except Exception as e:
+        print(f"[Remote Fetch Fallback Notice] {e}")
         return []
 
+def smart_merge_assignments(local: list, remote: list) -> list:
+    """
+    Safely merges local container assignments with remote GitHub assignments:
+    1. Preserves 'submitted' status if present in either source (prevents accidental reverts).
+    2. Preserves 'in_progress' over 'not_started'.
+    3. Adopts updated metadata/deadlines from remote (LETUS sync).
+    4. Preserves any items that exist in only local or only remote.
+    5. Deduplicates by 'id' and 'moodleUid'.
+    """
+    if not remote:
+        return local
+    if not local:
+        return remote
+
+    local_map = {str(a.get("id")): dict(a) for a in local if a.get("id")}
+    local_moodle = {str(a.get("moodleUid")): str(a.get("id")) for a in local if a.get("moodleUid")}
+
+    remote_map = {str(a.get("id")): dict(a) for a in remote if a.get("id")}
+
+    merged_ids = set()
+    merged = []
+
+    for rid, rem in remote_map.items():
+        matching_lid = rid if rid in local_map else local_moodle.get(str(rem.get("moodleUid", "")))
+        loc = local_map.get(matching_lid) if matching_lid else None
+
+        item = dict(rem)
+        if loc:
+            # Preservation Rule: Submitted status is sticky unless explicitly uncompleted
+            if loc.get("status") == "submitted" or rem.get("status") == "submitted":
+                item["status"] = "submitted"
+                item["completedAt"] = rem.get("completedAt") or loc.get("completedAt") or datetime.now(JST).isoformat()
+            elif loc.get("status") == "in_progress" or rem.get("status") == "in_progress":
+                item["status"] = "in_progress"
+                item["completedAt"] = None
+            else:
+                item["status"] = rem.get("status") or loc.get("status") or "not_started"
+                item["completedAt"] = None
+
+            if loc.get("folderPath") and not rem.get("folderPath"):
+                item["folderPath"] = loc["folderPath"]
+            if loc.get("memo") and not rem.get("memo"):
+                item["memo"] = loc["memo"]
+
+            merged_ids.add(str(loc.get("id")))
+
+        merged_ids.add(rid)
+        merged.append(item)
+
+    # Append tasks that existed only locally (e.g. added via Discord Bot)
+    for lid, loc in local_map.items():
+        if lid not in merged_ids:
+            merged.append(dict(loc))
+
+    return merged
+
 def load_assignments(force_remote: bool = False):
+    global _last_remote_sync_time
     with DATA_LOCK:
+        now = time.time()
         local = []
         if os.path.exists(JSON_PATH):
             try:
@@ -121,36 +214,21 @@ def load_assignments(force_remote: bool = False):
             except Exception:
                 local = []
 
-        # Local is authoritative during normal runtime to prevent stale CDN overwrites and eliminate read latency
-        if local and not force_remote:
+        should_fetch_remote = force_remote or not local or (now - _last_remote_sync_time > REMOTE_SYNC_TTL)
+
+        if not should_fetch_remote:
             return local
 
-        # Only fetch remote if local is empty/missing or explicitly forced (e.g., initial startup)
         remote = fetch_remote_assignments()
+        _last_remote_sync_time = now
+
         if not remote:
             return local
         if not local:
             _raw_save_assignments(remote)
             return remote
 
-        # 2-way Smart Merge: Remote (GitHub Actions/LETUS updates) + Local (user changes)
-        local_map = {str(a.get("id")): a for a in local if a.get("id")}
-        merged = []
-        for r in remote:
-            rid = str(r.get("id"))
-            if rid in local_map:
-                loc = local_map.pop(rid)
-                if loc.get("status") == "submitted":
-                    r["status"] = "submitted"
-                    r["completedAt"] = loc.get("completedAt") or r.get("completedAt")
-                elif loc.get("status") == "in_progress" and r.get("status") == "not_started":
-                    r["status"] = "in_progress"
-                merged.append(r)
-            else:
-                merged.append(r)
-        for loc_item in local_map.values():
-            merged.append(loc_item)
-
+        merged = smart_merge_assignments(local, remote)
         _raw_save_assignments(merged)
         return merged
 
@@ -1249,7 +1327,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                     return
 
                 with DATA_LOCK:
-                    assignments = load_assignments()
+                    assignments = load_assignments(force_remote=True)
                     updated_targets = []
 
                     for item in items_to_update:
@@ -1313,7 +1391,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                 title = payload.get("title", task_id)
 
                 with DATA_LOCK:
-                    assignments = load_assignments()
+                    assignments = load_assignments(force_remote=True)
                     new_assignments = [a for a in assignments if str(a.get("id")) != str(task_id)]
                     save_assignments(new_assignments)
                     schedule_git_push(f"Delete task '{title}' via Web", delay=3.0)
@@ -1339,7 +1417,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                 task_id = payload.get("id")
 
                 with DATA_LOCK:
-                    assignments = load_assignments()
+                    assignments = load_assignments(force_remote=True)
                     new_assignments = [a for a in assignments if a.get("title") != title and str(a.get("id")) != str(task_id)]
                     save_assignments(new_assignments)
 
@@ -1400,7 +1478,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                     task["status"] = "not_started"
 
                 with DATA_LOCK:
-                    assignments = load_assignments()
+                    assignments = load_assignments(force_remote=True)
                     # Check for existing id
                     assignments = [a for a in assignments if str(a.get("id")) != str(task["id"])]
                     assignments.append(task)
@@ -1437,7 +1515,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                     return
 
                 with DATA_LOCK:
-                    assignments = load_assignments()
+                    assignments = load_assignments(force_remote=True)
                     target = None
                     for a in assignments:
                         if str(a.get("id")) == task_id:
@@ -1525,6 +1603,13 @@ def main():
     if not token:
         print("Error: 'discord_bot_token' is missing in config.json or environment variables.")
         sys.exit(1)
+
+    # 0. Sync assignments with remote GitHub repository on startup
+    try:
+        load_assignments(force_remote=True)
+        print("[Startup] Synchronized assignments with remote GitHub master.")
+    except Exception as e:
+        print(f"[Startup Warning] Remote sync failed: {e}")
 
     # 1. Start background web server for Render port check
     start_health_server()
