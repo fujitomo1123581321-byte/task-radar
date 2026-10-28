@@ -485,12 +485,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "6回目のレポート課題提出「２電子系のスピン角運動量の合成」",
     "deadline": "2026-10-28T20:00:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "２電子系のハミルトニアンHを対角化する４つの固有関数のうちスピン自由度部分について、それらの全角運動量の大きさとZ成分を求めて",
     "folderPath": null,
     "createdAt": "2026-10-15T14:02:39.003964",
-    "completedAt": null,
+    "completedAt": "2026-10-28T13:59:51.428116+09:00",
     "moodleUid": "575543@letus.ed.tus.ac.jp"
   },
   {
