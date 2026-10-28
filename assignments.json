@@ -900,12 +900,12 @@
     "title": "ノート提出６回目",
     "deadline": "2026-10-27T12:00:00",
     "submissionMethod": "LETUS",
-    "status": "in_progress",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-24T22:52:04.417933",
-    "completedAt": null,
+    "completedAt": "2026-10-28T13:48:48.951445+09:00",
     "moodleUid": "651384@letus.ed.tus.ac.jp"
   },
   {
