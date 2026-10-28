@@ -900,12 +900,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "ノート提出６回目",
     "deadline": "2026-10-27T12:00:00",
     "submissionMethod": "LETUS",
-    "status": "submitted",
+    "status": "not_started",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-24T22:52:04.417933",
-    "completedAt": "2026-10-28T13:48:48+09:00",
+    "completedAt": null,
     "moodleUid": "651384@letus.ed.tus.ac.jp"
   },
   {
@@ -1035,12 +1035,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "課題 10/27",
     "deadline": "2026-10-27T15:00:00",
     "submissionMethod": "LETUS",
-    "status": "submitted",
+    "status": "not_started",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-27T04:43:28.559977",
-    "completedAt": "2026-10-28T13:49:00+09:00",
+    "completedAt": null,
     "moodleUid": "660202@letus.ed.tus.ac.jp"
   }
 ];
