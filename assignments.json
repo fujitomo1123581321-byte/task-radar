@@ -1020,12 +1020,12 @@
     "title": "核融合が難しい理由",
     "deadline": "2026-10-26T17:25:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-26T08:12:40.187546",
-    "completedAt": null,
+    "completedAt": "2026-10-28T13:01:49.792287+09:00",
     "moodleUid": "650197@letus.ed.tus.ac.jp"
   },
   {
