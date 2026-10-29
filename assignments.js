@@ -1097,5 +1097,19 @@ window.INITIAL_ASSIGNMENTS = [
     "memo": "",
     "createdAt": "2026-10-29T06:58:12.737Z",
     "completedAt": null
+  },
+  {
+    "id": "custom-20261029172543",
+    "category": "personal",
+    "subject": "個人",
+    "title": "モバイルバッテリー",
+    "deadline": "2026-10-29T17:50:00",
+    "submissionMethod": "Discord Bot",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "Discordより登録",
+    "folderPath": null,
+    "createdAt": "2026-10-29T17:25:43.661206+09:00",
+    "completedAt": null
   }
 ];
