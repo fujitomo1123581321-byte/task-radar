@@ -1071,5 +1071,18 @@ window.INITIAL_ASSIGNMENTS = [
     "folderPath": null,
     "createdAt": "2026-10-28T21:17:57.960027+09:00",
     "completedAt": null
+  },
+  {
+    "id": "task-1793256729349",
+    "category": "personal",
+    "subject": "生活・買い物",
+    "title": "【目標】毎朝6:00に起きて、7:30までには出て勉強しよう！",
+    "deadline": "2026-11-15T17:00",
+    "submissionMethod": "",
+    "priority": "high",
+    "status": "not_started",
+    "memo": "",
+    "createdAt": "2026-10-29T06:52:09.350Z",
+    "completedAt": null
   }
 ];
