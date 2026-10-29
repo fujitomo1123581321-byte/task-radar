@@ -1084,5 +1084,18 @@ window.INITIAL_ASSIGNMENTS = [
     "memo": "",
     "createdAt": "2026-10-29T06:52:09.350Z",
     "completedAt": null
+  },
+  {
+    "id": "task-1793257092737",
+    "category": "personal",
+    "subject": "サークル・バイト",
+    "title": "新しいバイト探す",
+    "deadline": "2026-11-07T17:00",
+    "submissionMethod": "",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "createdAt": "2026-10-29T06:58:12.737Z",
+    "completedAt": null
   }
 ];
