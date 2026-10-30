@@ -915,12 +915,12 @@
     "title": "第7回小テスト",
     "deadline": "2026-10-30T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-24T22:52:04.418917",
-    "completedAt": null,
+    "completedAt": "2026-10-30T23:38:46.410088+09:00",
     "moodleUid": "638962@letus.ed.tus.ac.jp"
   },
   {
