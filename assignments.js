@@ -1111,5 +1111,18 @@ window.INITIAL_ASSIGNMENTS = [
     "folderPath": null,
     "createdAt": "2026-10-29T17:25:43.661206+09:00",
     "completedAt": "2026-10-30T09:14:58.082405+09:00"
+  },
+  {
+    "id": "task-1793357021280",
+    "category": "personal",
+    "subject": "部費持ってくる",
+    "title": "6000円",
+    "deadline": "2026-10-31T17:00",
+    "submissionMethod": "",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "createdAt": "2026-10-30T10:43:41.280Z",
+    "completedAt": null
   }
 ];
