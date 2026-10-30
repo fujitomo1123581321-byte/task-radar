@@ -1105,11 +1105,11 @@
     "title": "モバイルバッテリー",
     "deadline": "2026-10-29T17:50:00",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "Discordより登録",
     "folderPath": null,
     "createdAt": "2026-10-29T17:25:43.661206+09:00",
-    "completedAt": null
+    "completedAt": "2026-10-30T09:14:58.082405+09:00"
   }
 ]
