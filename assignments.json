@@ -1139,5 +1139,20 @@
     "createdAt": "2026-10-31T02:14:55.042824",
     "completedAt": null,
     "moodleUid": "638963@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261031154128-0",
+    "category": "academic",
+    "subject": "プラズマ物理",
+    "title": "プラズマ物理レポート課題（第1回）",
+    "deadline": "2026-11-13T18:00:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "high",
+    "memo": "課題のPDFに記載した期日までにアップロードしてください。 ",
+    "folderPath": null,
+    "createdAt": "2026-10-31T15:41:28.545621",
+    "completedAt": null,
+    "moodleUid": "661146@letus.ed.tus.ac.jp"
   }
 ]
