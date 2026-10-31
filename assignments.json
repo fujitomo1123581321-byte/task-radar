@@ -1124,5 +1124,20 @@
     "memo": "",
     "createdAt": "2026-10-30T10:43:41.280Z",
     "completedAt": null
+  },
+  {
+    "id": "letus-20261031021455-0",
+    "category": "academic",
+    "subject": "11データサイエンス・ＡＩ応用基礎",
+    "title": "第8回小テスト",
+    "deadline": "2026-11-06T23:59:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "high",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-10-31T02:14:55.042824",
+    "completedAt": null,
+    "moodleUid": "638963@letus.ed.tus.ac.jp"
   }
 ]
