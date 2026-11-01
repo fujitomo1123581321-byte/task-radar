@@ -803,7 +803,7 @@
     "title": "返金申請",
     "deadline": "2026-10-31T23:59",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": "medium",
     "memo": "Discordより登録",
     "folderPath": null,
