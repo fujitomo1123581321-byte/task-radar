@@ -1182,5 +1182,50 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-11-02T07:15:10.713691",
     "completedAt": null,
     "moodleUid": "661609@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261102081544-0",
+    "category": "academic",
+    "subject": "05原子核物理",
+    "title": "授業quiz0",
+    "deadline": "2026-11-02T16:34:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-11-02T08:15:44.743982",
+    "completedAt": null,
+    "moodleUid": "661562@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261102081544-1",
+    "category": "academic",
+    "subject": "05原子核物理",
+    "title": "授業quiz3",
+    "deadline": "2026-11-02T17:13:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "次から選んでください ",
+    "folderPath": null,
+    "createdAt": "2026-11-02T08:15:44.744141",
+    "completedAt": null,
+    "moodleUid": "661563@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261102081544-2",
+    "category": "academic",
+    "subject": "02統計力学2",
+    "title": "レポート課題 締め切り11/8(日)23:59(JST)",
+    "deadline": "2026-11-08T23:59:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "high",
+    "memo": "演習問題3-3, 3-4, 3-5, 3-6のから少なくとも一問を解いて提出してください。  ",
+    "folderPath": null,
+    "createdAt": "2026-11-02T08:15:44.744633",
+    "completedAt": null,
+    "moodleUid": "642099@letus.ed.tus.ac.jp"
   }
 ];
