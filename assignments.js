@@ -1154,5 +1154,18 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-31T15:41:28.545621",
     "completedAt": null,
     "moodleUid": "661146@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "task-1793578349645",
+    "category": "personal",
+    "subject": "サークル・バイト",
+    "title": "三門、チェンソー返金申請",
+    "deadline": "2026-11-06T17:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "createdAt": "2026-11-02T00:12:29.645Z",
+    "completedAt": null
   }
 ];
