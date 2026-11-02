@@ -1190,12 +1190,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "授業quiz0",
     "deadline": "2026-11-02T16:34:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-11-02T08:15:44.743982",
-    "completedAt": null,
+    "completedAt": "2026-11-02T17:16:19.730053+09:00",
     "moodleUid": "661562@letus.ed.tus.ac.jp"
   },
   {
@@ -1205,12 +1205,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "授業quiz3",
     "deadline": "2026-11-02T17:13:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "次から選んでください ",
     "folderPath": null,
     "createdAt": "2026-11-02T08:15:44.744141",
-    "completedAt": null,
+    "completedAt": "2026-11-02T17:16:22.013492+09:00",
     "moodleUid": "661563@letus.ed.tus.ac.jp"
   },
   {
