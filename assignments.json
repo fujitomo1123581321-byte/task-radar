@@ -1227,5 +1227,20 @@
     "createdAt": "2026-11-02T08:15:44.744633",
     "completedAt": null,
     "moodleUid": "642099@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261102150424-0",
+    "category": "academic",
+    "subject": "08実験",
+    "title": "実験⑥(R) 後組",
+    "deadline": "2027-01-01T23:59:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-11-02T15:04:24.346721",
+    "completedAt": null,
+    "moodleUid": "577539@letus.ed.tus.ac.jp"
   }
 ]
