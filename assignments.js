@@ -567,7 +567,7 @@ window.INITIAL_ASSIGNMENTS = [
     "id": "custom-20261019095214",
     "category": "personal",
     "subject": "個人",
-    "title": "蒼空　Σ70mm買う",
+    "title": "蒼空　Σ70mm買う　確認しよう",
     "deadline": "2026-10-31T23:59",
     "submissionMethod": "Discord Bot",
     "status": "in_progress",
