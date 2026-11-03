@@ -1050,12 +1050,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "７回目ノート提出",
     "deadline": "2026-11-03T12:00:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-28T07:35:08.815420",
-    "completedAt": null,
+    "completedAt": "2026-11-03T12:08:02.777158+09:00",
     "moodleUid": "651385@letus.ed.tus.ac.jp"
   },
   {
