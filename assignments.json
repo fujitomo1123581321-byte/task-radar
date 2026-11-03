@@ -1242,5 +1242,20 @@
     "createdAt": "2026-11-02T15:04:24.346721",
     "completedAt": null,
     "moodleUid": "577539@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261103025230-0",
+    "category": "academic",
+    "subject": "05原子核物理",
+    "title": "第７回の課題",
+    "deadline": "2026-11-26T22:00:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-11-03T02:52:30.692522",
+    "completedAt": null,
+    "moodleUid": "650200@letus.ed.tus.ac.jp"
   }
 ]
