@@ -1265,12 +1265,12 @@
     "title": "課題 11/3",
     "deadline": "2026-11-03T14:40:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-11-03T04:10:47.016805",
-    "completedAt": null,
+    "completedAt": "2026-11-03T20:08:59.237860+09:00",
     "moodleUid": "661357@letus.ed.tus.ac.jp"
   }
 ]
