@@ -1244,7 +1244,7 @@ window.INITIAL_ASSIGNMENTS = [
     "moodleUid": "577539@letus.ed.tus.ac.jp"
   },
   {
-    "id": "letus-20261103025230-0",
+    "id": "letus-20261103025233-0",
     "category": "academic",
     "subject": "05原子核物理",
     "title": "第７回の課題",
@@ -1254,7 +1254,7 @@ window.INITIAL_ASSIGNMENTS = [
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
-    "createdAt": "2026-11-03T02:52:30.692522",
+    "createdAt": "2026-11-03T02:52:33.012773",
     "completedAt": null,
     "moodleUid": "650200@letus.ed.tus.ac.jp"
   }
