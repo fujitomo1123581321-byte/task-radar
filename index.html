@@ -1455,8 +1455,20 @@
       // 1. Direct assignment URL (e.g. https://letus.ed.tus.ac.jp/mod/assign/view.php?id=...)
       if (a.letusUrl) return a.letusUrl;
 
-      // 2. Fallback to LETUS upcoming events calendar (lists all upcoming submission links)
+      // 2. Academic / LETUS tasks
       if (a.category === 'academic' || a.submissionMethod === 'LETUS' || a.moodleUid || (a.memo && a.memo.includes('LETUS'))) {
+        if (a.deadline) {
+          try {
+            const dl = new Date(a.deadline);
+            const now = new Date();
+            // If deadline is in the past, jump to that specific date's calendar day view so past tasks are visible!
+            if (dl.getTime() < now.getTime()) {
+              const unixSec = Math.floor(dl.getTime() / 1000);
+              return `https://letus.ed.tus.ac.jp/calendar/view.php?view=day&time=${unixSec}`;
+            }
+          } catch (_) {}
+        }
+        // Future / upcoming tasks: open upcoming events list
         return 'https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming';
       }
       return null;
