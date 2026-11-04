@@ -500,6 +500,13 @@
           <textarea id="formMemo" rows="2" placeholder="持ち物や留意点、関連メモを記入" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"></textarea>
         </div>
 
+        <!-- LETUS URL -->
+        <div id="formLetusUrlContainer">
+          <label class="block font-medium text-slate-300 mb-1">🔗 LETUS提出画面の個別URL（任意）</label>
+          <input type="url" id="formLetusUrl" placeholder="例: https://letus.ed.tus.ac.jp/mod/assign/view.php?id=..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          <p class="text-[11px] text-slate-400 mt-1">※未入力の場合はLETUSの課題一覧ページへ自動リンクします</p>
+        </div>
+
         </div>
 
         <!-- Form Buttons (Pinned Footer: ALWAYS visible without full screen) -->
@@ -1445,14 +1452,11 @@
     // --- LETUS DIRECT LINK HELPER ---
     function getLetusUrl(a) {
       if (!a) return null;
+      // 1. Direct assignment URL (e.g. https://letus.ed.tus.ac.jp/mod/assign/view.php?id=...)
       if (a.letusUrl) return a.letusUrl;
-      if (a.moodleUid) {
-        const m = String(a.moodleUid).match(/^(\d+)@/);
-        if (m) {
-          return `https://letus.ed.tus.ac.jp/calendar/view.php?view=event&id=${m[1]}`;
-        }
-      }
-      if (a.category === 'academic' || a.submissionMethod === 'LETUS' || (a.memo && a.memo.includes('LETUS'))) {
+
+      // 2. Fallback to LETUS upcoming events calendar (lists all upcoming submission links)
+      if (a.category === 'academic' || a.submissionMethod === 'LETUS' || a.moodleUid || (a.memo && a.memo.includes('LETUS'))) {
         return 'https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming';
       }
       return null;
@@ -2146,6 +2150,7 @@
       document.getElementById('formPriority').value = 'medium';
       document.getElementById('formStatus').value = 'not_started';
       document.getElementById('formMemo').value = '';
+      if (document.getElementById('formLetusUrl')) document.getElementById('formLetusUrl').value = '';
 
       document.getElementById('assignmentModal').classList.remove('hidden');
     }
@@ -2174,6 +2179,7 @@
       document.getElementById('formPriority').value = a.priority || 'medium';
       document.getElementById('formStatus').value = a.status || 'not_started';
       document.getElementById('formMemo').value = a.memo || '';
+      if (document.getElementById('formLetusUrl')) document.getElementById('formLetusUrl').value = a.letusUrl || '';
 
       document.getElementById('assignmentModal').classList.remove('hidden');
     }
@@ -2202,6 +2208,7 @@
       const priority = document.getElementById('formPriority').value;
       const status = document.getElementById('formStatus').value;
       const memo = document.getElementById('formMemo').value.trim();
+      const letusUrl = document.getElementById('formLetusUrl') ? document.getElementById('formLetusUrl').value.trim() || null : null;
 
       if (id) {
         const a = assignments.find(x => x.id === id);
@@ -2214,6 +2221,7 @@
           a.priority = priority;
           a.status = status;
           a.memo = memo;
+          a.letusUrl = letusUrl;
           if (status === 'submitted') {
             if (!a.completedAt) a.completedAt = new Date().toISOString();
             a.uncompletedAt = null;
@@ -2236,6 +2244,7 @@
           priority,
           status,
           memo,
+          letusUrl,
           createdAt: new Date().toISOString(),
           completedAt: status === 'submitted' ? new Date().toISOString() : null
         };
