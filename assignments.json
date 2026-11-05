@@ -1175,12 +1175,12 @@
     "title": "第8回講義中課題　追加問題",
     "deadline": "2026-11-05T12:10:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "講義中課題を解くために使ったプログラムの内容が正しく理解できているか確認するための問題です。講義中課題を解き終わってから挑戦してください。制限時間は10分です。12:10を過ぎると強制終了されます。 ",
     "folderPath": null,
     "createdAt": "2026-11-02T07:15:10.713691",
-    "completedAt": null,
+    "completedAt": "2026-11-05T15:21:23.916536+09:00",
     "moodleUid": "661609@letus.ed.tus.ac.jp"
   },
   {
