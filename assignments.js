@@ -1332,5 +1332,19 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-11-05T06:07:43.829021",
     "completedAt": null,
     "moodleUid": "575569@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "task-1793860069403",
+    "category": "personal",
+    "subject": "サークル・バイト",
+    "title": "返金申請送ったものの、返金をしてもらう",
+    "deadline": "2026-11-08T17:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "letusUrl": null,
+    "createdAt": "2026-11-05T06:27:49.403Z",
+    "completedAt": null
   }
 ];
