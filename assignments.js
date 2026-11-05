@@ -1287,5 +1287,20 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-11-04T10:43:41.597648",
     "completedAt": null,
     "moodleUid": "643299@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261105020510-0",
+    "category": "academic",
+    "subject": "03量子力学3",
+    "title": "ノート提出８回目",
+    "deadline": "2026-11-10T12:00:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-11-05T02:05:10.080539",
+    "completedAt": null,
+    "moodleUid": "651387@letus.ed.tus.ac.jp"
   }
 ];
