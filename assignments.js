@@ -1302,5 +1302,35 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-11-05T02:05:10.080539",
     "completedAt": null,
     "moodleUid": "651387@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261105060743-0",
+    "category": "academic",
+    "subject": "02物性論3B",
+    "title": "課題５と課題６",
+    "deadline": "2026-11-18T20:00:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "１つのPDFに課題５と課題６に対する解答を、他者が読んでわかるように、式と言葉を用いて説明せよ。必要に応じて、資料にあるグラフを取り込んでわかるように説明しても構わない。 ",
+    "folderPath": null,
+    "createdAt": "2026-11-05T06:07:43.828823",
+    "completedAt": null,
+    "moodleUid": "575561@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261105060743-1",
+    "category": "academic",
+    "subject": "02物性論3B",
+    "title": "１回目のフィードバック",
+    "deadline": "2026-11-18T20:00:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "「どこまで授業の内容がわかっているか？を授業者が読んでわかるように」授業ではどのような話をしたかを言語化し記述してください。 ",
+    "folderPath": null,
+    "createdAt": "2026-11-05T06:07:43.829021",
+    "completedAt": null,
+    "moodleUid": "575569@letus.ed.tus.ac.jp"
   }
 ];
