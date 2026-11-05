@@ -886,12 +886,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "数値計算課題",
     "deadline": "2026-11-04T23:59:00",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "Discordより登録",
     "folderPath": null,
     "createdAt": "2026-10-22T15:16:40.099753+09:00",
-    "completedAt": null
+    "completedAt": "2026-11-05T15:21:15.861724+09:00"
   },
   {
     "id": "letus-20261024225204-0",
