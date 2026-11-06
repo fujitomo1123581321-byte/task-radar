@@ -305,13 +305,14 @@
     "title": "実験⑤(D準備) 後組",
     "deadline": "2026-11-06T19:00:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-14T20:32:53.299339",
-    "completedAt": null,
-    "moodleUid": "577527@letus.ed.tus.ac.jp"
+    "completedAt": "2026-11-06T17:21:35.682947",
+    "moodleUid": "577527@letus.ed.tus.ac.jp",
+    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206"
   },
   {
     "id": "letus-20261014203253-23",
@@ -1138,7 +1139,8 @@
     "folderPath": null,
     "createdAt": "2026-10-31T02:14:55.042824",
     "completedAt": null,
-    "moodleUid": "638963@letus.ed.tus.ac.jp"
+    "moodleUid": "638963@letus.ed.tus.ac.jp",
+    "letusUrl": "https://letus.ed.tus.ac.jp/mod/quiz/view.php?id=2218759"
   },
   {
     "id": "letus-20261031154128-0",
@@ -1220,13 +1222,14 @@
     "title": "レポート課題 締め切り11/8(日)23:59(JST)",
     "deadline": "2026-11-08T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "演習問題3-3, 3-4, 3-5, 3-6のから少なくとも一問を解いて提出してください。  ",
     "folderPath": null,
     "createdAt": "2026-11-02T08:15:44.744633",
-    "completedAt": null,
-    "moodleUid": "642099@letus.ed.tus.ac.jp"
+    "completedAt": "2026-11-06T17:21:39.232213",
+    "moodleUid": "642099@letus.ed.tus.ac.jp",
+    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2228448"
   },
   {
     "id": "letus-20261102150424-0",
