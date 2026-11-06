@@ -1280,12 +1280,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "ミニテスト8(11/11の23:59pm締切; 再提出不可)",
     "deadline": "2026-11-11T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-11-04T10:43:41.597648",
-    "completedAt": null,
+    "completedAt": "2026-11-06T10:51:00.634718+09:00",
     "moodleUid": "643299@letus.ed.tus.ac.jp"
   },
   {
