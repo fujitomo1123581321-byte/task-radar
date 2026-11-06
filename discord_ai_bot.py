@@ -1347,18 +1347,26 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                                     target = a
                                     break
 
-                        if target and new_status:
-                            # Safeguard: protect submitted tasks from accidental demotion to in_progress
-                            if target.get("status") == "submitted" and new_status == "in_progress":
-                                print(f"[Task Status Protection] Protected submitted task '{target.get('title')}' from demotion to in_progress")
-                                continue
+                        if target:
+                            changed = False
+                            if "letusUrl" in item and item.get("letusUrl"):
+                                target["letusUrl"] = item.get("letusUrl")
+                                changed = True
 
-                            target["status"] = new_status
-                            if new_status == "submitted":
-                                target["completedAt"] = datetime.now(JST).isoformat()
-                            else:
-                                target["completedAt"] = None
-                            updated_targets.append(target)
+                            if new_status:
+                                # Safeguard: protect submitted tasks from accidental demotion to in_progress
+                                if target.get("status") == "submitted" and new_status == "in_progress":
+                                    print(f"[Task Status Protection] Protected submitted task '{target.get('title')}' from demotion to in_progress")
+                                else:
+                                    target["status"] = new_status
+                                    if new_status == "submitted":
+                                        target["completedAt"] = datetime.now(JST).isoformat()
+                                    else:
+                                        target["completedAt"] = None
+                                    changed = True
+
+                            if changed and target not in updated_targets:
+                                updated_targets.append(target)
 
                     if updated_targets:
                         save_assignments(assignments)

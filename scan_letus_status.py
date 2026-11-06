@@ -67,10 +67,15 @@ def save_assignments(assignments):
     with open(JS_PATH, "w", encoding="utf-8") as f:
         f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(assignments, ensure_ascii=False, indent=2) + ";\n")
 
-def sync_to_cloud(task_id, status, title=""):
-    """Render APIにステータス変更を即座にPOST通知"""
+def sync_to_cloud(task_id, status=None, title="", letus_url=None):
+    """Render APIにステータスやletusUrlの変更を即座にPOST通知"""
     try:
-        payload = json.dumps({"id": task_id, "status": status, "title": title}).encode("utf-8")
+        data = {"id": task_id, "title": title}
+        if status:
+            data["status"] = status
+        if letus_url:
+            data["letusUrl"] = letus_url
+        payload = json.dumps(data).encode("utf-8")
         req = urllib.request.Request(
             CLOUD_API_URL,
             data=payload,
@@ -210,6 +215,7 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
 
     updated_promoted = []  # 未完了 -> 提出済みに自動昇格
     updated_reverted = []  # 誤完了検知 -> 未完了に自動復元
+    urls_updated = []      # LETUS固有URLを新規取得・保存
 
     with sync_playwright() as p:
         print(f"ブラウザを起動しています (Edge, headless={headless})...")
@@ -230,8 +236,13 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
         # Step 1: Open upcoming events calendar
         print("\n[ステップ 1] LETUSの今後のイベント画面を開いています...")
         try:
-            page.goto("https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming", wait_until="load", timeout=30000)
-            time.sleep(3)
+            page.goto("https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming", wait_until="commit", timeout=30000)
+            try:
+                page.wait_for_url("**/calendar/view.php*", timeout=20000)
+            except Exception:
+                pass
+            page.wait_for_load_state("domcontentloaded")
+            time.sleep(2)
         except Exception as e:
             print(f"カレンダー接続エラー: {e}")
             context.close()
@@ -267,14 +278,30 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                 page.wait_for_load_state("domcontentloaded", timeout=5000)
                 event_links = page.evaluate("""() => {
                     const results = [];
-                    const links = document.querySelectorAll('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"]');
-                    links.forEach(a => {
-                        const title = a.innerText.trim();
-                        const href = a.href;
-                        if (title && href && !results.some(r => r.href === href)) {
-                            results.push({ title, href });
+                    const cards = document.querySelectorAll('.event, [data-event-id], .calendar_event_course, .card');
+                    cards.forEach(card => {
+                        const titleEl = card.querySelector('.name, h3, .card-title');
+                        const linkEl = card.querySelector('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"]');
+                        const courseEl = card.querySelector('.course, .text-muted, a[href*="/course/view.php"]');
+                        if (linkEl) {
+                            const title = titleEl ? titleEl.innerText.trim() : linkEl.innerText.trim();
+                            const href = linkEl.href;
+                            const course = courseEl ? courseEl.innerText.trim() : '';
+                            if (href && !results.some(r => r.href === href)) {
+                                results.push({ title, href, course });
+                            }
                         }
                     });
+                    if (results.length === 0) {
+                        const links = document.querySelectorAll('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"]');
+                        links.forEach(a => {
+                            const title = a.innerText.trim();
+                            const href = a.href;
+                            if (title && href && !results.some(r => r.href === href)) {
+                                results.push({ title, href, course: '' });
+                            }
+                        });
+                    }
                     return results;
                 }""")
                 break
@@ -334,11 +361,13 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
 
             if not target_url:
                 for ev in event_links:
-                    clean_ev_title = re.sub(r'の提出期限|終了|第\d+回', '', ev["title"]).strip()
-                    clean_a_title = re.sub(r'の提出期限|終了|第\d+回', '', title).strip()
-                    if clean_a_title in ev["title"] or clean_ev_title in title or ev["title"] in title:
+                    clean_ev_title = re.sub(r'[「」]|の提出期限|の受験可能期間の終了|終了|第\d+回', '', ev["title"]).strip()
+                    clean_a_title = re.sub(r'[「」]|の提出期限|の受験可能期間の終了|終了|第\d+回', '', title).strip()
+                    if clean_a_title and (clean_a_title in ev["title"] or clean_ev_title in title or clean_a_title in clean_ev_title or clean_ev_title in clean_a_title):
                         target_url = ev["href"]
                         a["letusUrl"] = target_url
+                        if a not in urls_updated:
+                            urls_updated.append(a)
                         break
 
             if not target_url:
@@ -370,11 +399,13 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
 
             if not target_url:
                 for ev in event_links:
-                    clean_ev_title = re.sub(r'の提出期限|終了|第\d+回', '', ev["title"]).strip()
-                    clean_a_title = re.sub(r'の提出期限|終了|第\d+回', '', title).strip()
-                    if clean_a_title in ev["title"] or clean_ev_title in title or ev["title"] in title:
+                    clean_ev_title = re.sub(r'[「」]|の提出期限|の受験可能期間の終了|終了|第\d+回', '', ev["title"]).strip()
+                    clean_a_title = re.sub(r'[「」]|の提出期限|の受験可能期間の終了|終了|第\d+回', '', title).strip()
+                    if clean_a_title and (clean_a_title in ev["title"] or clean_ev_title in title or clean_a_title in clean_ev_title or clean_ev_title in clean_a_title):
                         target_url = ev["href"]
                         a["letusUrl"] = target_url
+                        if a not in urls_updated:
+                            urls_updated.append(a)
                         break
 
             if not target_url:
@@ -406,20 +437,25 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
         context.close()
 
     # Step 5: Save & Sync
-    total_changes = len(updated_promoted) + len(updated_reverted)
+    total_changes = len(updated_promoted) + len(updated_reverted) + len(urls_updated)
     if total_changes > 0:
         save_assignments(assignments)
-        print(f"\n🎉 合計 {total_changes} 件のステータスを更新しました！")
+        print(f"\n🎉 合計 {total_changes} 件の変更を反映しました！")
         if updated_promoted:
             print(f"  ・提出済みに昇格: {len(updated_promoted)} 件")
             for t in updated_promoted:
-                sync_to_cloud(t["id"], "submitted", t.get("title", ""))
+                sync_to_cloud(t["id"], status="submitted", title=t.get("title", ""), letus_url=t.get("letusUrl"))
         if updated_reverted:
             print(f"  ・未完了に自動復元: {len(updated_reverted)} 件")
             for t in updated_reverted:
-                sync_to_cloud(t["id"], "not_started", t.get("title", ""))
+                sync_to_cloud(t["id"], status="not_started", title=t.get("title", ""))
+        if urls_updated:
+            print(f"  ・LETUS固有URLを記録: {len(urls_updated)} 件")
+            for t in urls_updated:
+                if t not in updated_promoted:
+                    sync_to_cloud(t["id"], title=t.get("title", ""), letus_url=t.get("letusUrl"))
 
-        summary = f"letus sync: {len(updated_promoted)} promoted, {len(updated_reverted)} reverted"
+        summary = f"letus sync: {len(updated_promoted)} promoted, {len(updated_reverted)} reverted, {len(urls_updated)} URLs saved"
         sync_to_git(summary)
     else:
         print("\nステータスの変更はありませんでした（すべて整合しています）。")
