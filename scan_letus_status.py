@@ -21,6 +21,21 @@ from playwright.sync_api import sync_playwright
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JSON_PATH = os.path.join(BASE_DIR, "assignments.json")
 JS_PATH = os.path.join(BASE_DIR, "assignments.js")
+ACTIVE_COURSES = [
+    {"name": "データサイエンス・ＡＩ応用基礎", "id": 206066},
+    {"name": "プラズマ物理", "id": 206316},
+    {"name": "物理学実験３B組", "id": 204216},
+    {"name": "素粒子・原子核物理学", "id": 206296},
+    {"name": "宇宙の物理学１", "id": 206297},
+    {"name": "物理数学演習２Ｂ", "id": 206300},
+    {"name": "物理数学演習２Ａ", "id": 206299},
+    {"name": "量子力学３", "id": 206309},
+    {"name": "統計力学２", "id": 206314},
+    {"name": "数値計算３", "id": 206320},
+    {"name": "国際関係論", "id": 211878},
+    {"name": "宇宙科学総合", "id": 173828}
+]
+
 BROWSER_PROFILE_DIR = os.path.join(BASE_DIR, ".letus_browser_profile")
 LAST_MORNING_SCAN_PATH = os.path.join(BASE_DIR, "last_morning_scan.json")
 CLOUD_API_URL = "https://task-radar-us.onrender.com/api/task-status"
