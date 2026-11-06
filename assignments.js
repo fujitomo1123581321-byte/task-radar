@@ -1,4 +1,4 @@
-window.assignmentsData = [
+window.INITIAL_ASSIGNMENTS = [
   {
     "id": "task-p01",
     "category": "personal",
@@ -703,7 +703,7 @@ window.assignmentsData = [
     "title": "お金確認、discoedで執行部確認",
     "deadline": "2026-10-20T13:00",
     "submissionMethod": "Discord Bot",
-    "status": "in_progress",
+    "status": "not_started",
     "priority": "medium",
     "memo": "Discordより登録",
     "folderPath": null,
