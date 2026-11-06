@@ -1132,12 +1132,12 @@
     "title": "第8回小テスト",
     "deadline": "2026-11-06T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-31T02:14:55.042824",
-    "completedAt": null,
+    "completedAt": "2026-11-06T16:18:13.984703+09:00",
     "moodleUid": "638963@letus.ed.tus.ac.jp"
   },
   {
