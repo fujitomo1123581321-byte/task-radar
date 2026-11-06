@@ -907,15 +907,17 @@ async def on_message(message: discord.Message):
                                             completed_targets.append(a)
                                         break
 
-                        # Fallback if no target matched via ID: query by title
+                        # Fallback if no target matched via ID: query by title (strict matching only)
                         if not completed_targets:
-                            query = res.get("matched_task_title") or clean_content
-                            for a in assignments:
-                                if a.get("status") != "submitted" and (a.get("title") in query or query in a.get("title")):
-                                    a["status"] = "submitted"
-                                    a["completedAt"] = datetime.now(JST).isoformat()
-                                    completed_targets.append(a)
-                                    break
+                            query = (res.get("matched_task_title") or "").strip()
+                            if query and len(query) >= 3 and query not in ["確認", "完了", "タスク", "課題", "提出", "discord"]:
+                                for a in assignments:
+                                    t = a.get("title", "").strip()
+                                    if a.get("status") != "submitted" and (t == query or (len(t) >= 4 and t in query)):
+                                        a["status"] = "submitted"
+                                        a["completedAt"] = datetime.now(JST).isoformat()
+                                        completed_targets.append(a)
+                                        break
 
                         if completed_targets:
                             save_assignments(assignments)
@@ -1351,6 +1353,9 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                             changed = False
                             if "letusUrl" in item and item.get("letusUrl"):
                                 target["letusUrl"] = item.get("letusUrl")
+                                changed = True
+                            if "letusSubmitted" in item:
+                                target["letusSubmitted"] = item.get("letusSubmitted")
                                 changed = True
 
                             if new_status:

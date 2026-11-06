@@ -380,18 +380,23 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                 status_info = page.evaluate(check_submission_js)
 
                 if status_info.get("isSubmitted"):
-                    print(f"    🟢 提出済み（緑マーク）を検知！ -> 自動完了に更新")
-                    a["status"] = "submitted"
-                    a["completedAt"] = datetime.now().isoformat()
-                    updated_promoted.append(a)
-                    notify_windows("✅ LETUS提出を確認", f"「{subject}: {title}」の提出を確認し、完了に更新しました。")
+                    print(f"    🟢 LETUS上で提出済み（緑マーク）を検知！")
+                    if not a.get("letusSubmitted"):
+                        a["letusSubmitted"] = True
+                        if a not in urls_updated:
+                            urls_updated.append(a)
+                    notify_windows("🟢 LETUS提出を確認", f"「{subject}: {title}」のLETUS提出を確認しました（手動で完了できます）。")
                 else:
-                    print(f"    ⚪ 未提出のままです")
+                    print(f"    ⚪ LETUS上では未提出です")
+                    if a.get("letusSubmitted"):
+                        a["letusSubmitted"] = False
+                        if a not in urls_updated:
+                            urls_updated.append(a)
             except Exception as e:
                 print(f"    閲覧スキップ: {e}")
 
-        # Step 4: Check accidental completion guard (誤完了セーフガード)
-        print("\n[ステップ 4] 完了済み課題の誤完了セーフガード点検中...")
+        # Step 4: Check accidental completion guard (通知のみ・手動主導)
+        print("\n[ステップ 4] 完了済み課題のLETUS提出確認中 (確認・通知のみ)...")
         for a in completed_check_candidates:
             title = a.get("title", "")
             subject = a.get("subject", "")
@@ -417,15 +422,11 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                 time.sleep(1.2)
                 status_info = page.evaluate(check_submission_js)
 
-                # もしLETUS側で確実に未提出 (提出物なし / 未受験) であれば誤完了！
                 if status_info.get("hasUnsubmittedText") and not status_info.get("isSubmitted"):
-                    print(f"    🚨【誤完了を検出】Webでは完了ですが、LETUSでは『未提出』です！")
-                    a["status"] = "not_started"
-                    a["completedAt"] = None
-                    updated_reverted.append(a)
+                    print(f"    ⚠️【要確認】Webでは完了ですが、LETUS側では未提出です")
                     notify_windows(
-                        "🚨【未提出の誤完了を検出】",
-                        f"「{subject}: {title}」はLETUSで未提出のため、未完了に自動復元しました！"
+                        "⚠️【LETUS提出の確認】",
+                        f"「{subject}: {title}」は完了になっていますが、LETUSでは未提出の可能性があります。リンクからご確認ください。"
                     )
                 else:
                     print(f"    ✅ LETUS上でも提出済みを確認 (正常)")

@@ -1701,6 +1701,10 @@
                   <span class="text-[10px] sm:text-[11px] text-emerald-400 font-mono bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/50">
                     提出完了: ${new Date(a.completedAt).getMonth()+1}/${new Date(a.completedAt).getDate()} ${String(new Date(a.completedAt).getHours()).padStart(2,'0')}:${String(new Date(a.completedAt).getMinutes()).padStart(2,'0')}
                   </span>` : ''}
+                ${!isDone && a.letusSubmitted ? `
+                  <span class="text-[10px] sm:text-[11px] text-emerald-300 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/50 flex items-center gap-1" title="LETUS側で提出済みが確認されています。手動で完了にできます。">
+                    🟢 LETUS提出検知
+                  </span>` : ''}
               </div>
             </div>
 
