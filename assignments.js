@@ -1220,12 +1220,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "レポート課題 締め切り11/8(日)23:59(JST)",
     "deadline": "2026-11-08T23:59:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "high",
     "memo": "演習問題3-3, 3-4, 3-5, 3-6のから少なくとも一問を解いて提出してください。  ",
     "folderPath": null,
     "createdAt": "2026-11-02T08:15:44.744633",
-    "completedAt": null,
+    "completedAt": "2026-11-06T12:14:31.488509+09:00",
     "moodleUid": "642099@letus.ed.tus.ac.jp"
   },
   {
