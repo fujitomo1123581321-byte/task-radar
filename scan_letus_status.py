@@ -281,7 +281,7 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                     const cards = document.querySelectorAll('.event, [data-event-id], .calendar_event_course, .card');
                     cards.forEach(card => {
                         const titleEl = card.querySelector('.name, h3, .card-title');
-                        const linkEl = card.querySelector('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"]');
+                        const linkEl = card.querySelector('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"], a[href*="/mod/feedback/view.php"], a[href*="/mod/questionnaire/view.php"], a[href*="/mod/forum/view.php"]');
                         const courseEl = card.querySelector('.course, .text-muted, a[href*="/course/view.php"]');
                         if (linkEl) {
                             const title = titleEl ? titleEl.innerText.trim() : linkEl.innerText.trim();
@@ -293,7 +293,7 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                         }
                     });
                     if (results.length === 0) {
-                        const links = document.querySelectorAll('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"]');
+                        const links = document.querySelectorAll('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"], a[href*="/mod/feedback/view.php"], a[href*="/mod/questionnaire/view.php"], a[href*="/mod/forum/view.php"]');
                         links.forEach(a => {
                             const title = a.innerText.trim();
                             const href = a.href;
@@ -321,7 +321,11 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                 pageText.includes('評定のために提出済み') || 
                 pageText.includes('Submitted for grading') ||
                 (pageText.includes('完了') && pageText.includes('送信日時')) ||
-                (pageText.includes('受験結果') && (pageText.includes('終了') || pageText.includes('送信')));
+                (pageText.includes('受験結果') && (pageText.includes('終了') || pageText.includes('送信'))) ||
+                pageText.includes('回答を送信しました') ||
+                pageText.includes('すでに回答しています') ||
+                pageText.includes('回答済み') ||
+                pageText.includes('あなたの回答は記録されました');
 
             // Explicit negative indicators (Unsubmitted)
             const hasUnsubmittedText = 
