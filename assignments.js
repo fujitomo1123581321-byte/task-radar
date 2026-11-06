@@ -305,12 +305,12 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "実験⑤(D準備) 後組",
     "deadline": "2026-11-06T19:00:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-10-14T20:32:53.299339",
-    "completedAt": null,
+    "completedAt": "2026-11-06T16:21:49.791195+09:00",
     "moodleUid": "577527@letus.ed.tus.ac.jp"
   },
   {
