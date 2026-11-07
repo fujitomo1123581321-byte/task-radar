@@ -380,9 +380,34 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
 
             if not target_url:
                 for ev in event_links:
-                    clean_ev_title = re.sub(r'[「」]|の提出期限|の受験可能期間の終了|終了|第\d+回', '', ev["title"]).strip()
-                    clean_a_title = re.sub(r'[「」]|の提出期限|の受験可能期間の終了|終了|第\d+回', '', title).strip()
-                    if clean_a_title and (clean_a_title in ev["title"] or clean_ev_title in title or clean_a_title in clean_ev_title or clean_ev_title in clean_a_title):
+                    ev_title = ev.get("title", "")
+                    ev_course = ev.get("course", "")
+                    
+                    # Clean brackets and suffixes
+                    c_ev = re.sub(r'[「」『』()（）\[\]【】\s・:：]', '', ev_title).lower()
+                    c_a = re.sub(r'[「」『』()（）\[\]【】\s・:：]', '', title).lower()
+                    
+                    # Must match course keyword if available
+                    if ev_course and subject:
+                        # Simple keyword overlap
+                        c_subj = re.sub(r'[「」『』()（）\[\]【】\s・:：\d]', '', subject).lower()
+                        c_evc = re.sub(r'[「」『』()（）\[\]【】\s・:：\d]', '', ev_course).lower()
+                        if c_subj and c_evc and not any(k in c_evc for k in c_subj[:3]):
+                            continue
+                            
+                    # Number check: if title has numbers (e.g. 5, 8, 11/8), ev_title must match
+                    nums_a = re.findall(r'\d+', title)
+                    nums_ev = re.findall(r'\d+', ev_title)
+                    if nums_a and nums_ev:
+                        if not any(n in nums_ev for n in nums_a):
+                            continue
+                    elif nums_a and not nums_ev:
+                        continue
+
+                    # Substring check
+                    clean_ev_stripped = re.sub(r'の提出期限|の受験可能期間の終了|終了|締切|課題|小テスト', '', c_ev)
+                    clean_a_stripped = re.sub(r'の提出期限|の受験可能期間の終了|終了|締切|課題|小テスト', '', c_a)
+                    if clean_a_stripped and (clean_a_stripped in clean_ev_stripped or clean_ev_stripped in clean_a_stripped):
                         target_url = ev["href"]
                         a["letusUrl"] = target_url
                         if a not in urls_updated:
@@ -423,9 +448,34 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
 
             if not target_url:
                 for ev in event_links:
-                    clean_ev_title = re.sub(r'[「」]|の提出期限|の受験可能期間の終了|終了|第\d+回', '', ev["title"]).strip()
-                    clean_a_title = re.sub(r'[「」]|の提出期限|の受験可能期間の終了|終了|第\d+回', '', title).strip()
-                    if clean_a_title and (clean_a_title in ev["title"] or clean_ev_title in title or clean_a_title in clean_ev_title or clean_ev_title in clean_a_title):
+                    ev_title = ev.get("title", "")
+                    ev_course = ev.get("course", "")
+                    
+                    # Clean brackets and suffixes
+                    c_ev = re.sub(r'[「」『』()（）\[\]【】\s・:：]', '', ev_title).lower()
+                    c_a = re.sub(r'[「」『』()（）\[\]【】\s・:：]', '', title).lower()
+                    
+                    # Must match course keyword if available
+                    if ev_course and subject:
+                        # Simple keyword overlap
+                        c_subj = re.sub(r'[「」『』()（）\[\]【】\s・:：\d]', '', subject).lower()
+                        c_evc = re.sub(r'[「」『』()（）\[\]【】\s・:：\d]', '', ev_course).lower()
+                        if c_subj and c_evc and not any(k in c_evc for k in c_subj[:3]):
+                            continue
+                            
+                    # Number check: if title has numbers (e.g. 5, 8, 11/8), ev_title must match
+                    nums_a = re.findall(r'\d+', title)
+                    nums_ev = re.findall(r'\d+', ev_title)
+                    if nums_a and nums_ev:
+                        if not any(n in nums_ev for n in nums_a):
+                            continue
+                    elif nums_a and not nums_ev:
+                        continue
+
+                    # Substring check
+                    clean_ev_stripped = re.sub(r'の提出期限|の受験可能期間の終了|終了|締切|課題|小テスト', '', c_ev)
+                    clean_a_stripped = re.sub(r'の提出期限|の受験可能期間の終了|終了|締切|課題|小テスト', '', c_a)
+                    if clean_a_stripped and (clean_a_stripped in clean_ev_stripped or clean_ev_stripped in clean_a_stripped):
                         target_url = ev["href"]
                         a["letusUrl"] = target_url
                         if a not in urls_updated:
