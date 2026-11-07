@@ -1,4 +1,4 @@
-window.assignmentsData = [
+window.INITIAL_ASSIGNMENTS = [
   {
     "id": "task-p01",
     "category": "personal",
@@ -1441,20 +1441,5 @@ window.assignmentsData = [
     "createdAt": "2026-11-07T01:58:04.001630",
     "completedAt": null,
     "moodleUid": "638964@letus.ed.tus.ac.jp"
-  },
-  {
-    "id": "letus-20261107041110-0",
-    "category": "academic",
-    "subject": "08実験",
-    "title": "実験⑥(R) 前組",
-    "deadline": "2026-12-11T23:59:00",
-    "submissionMethod": "LETUS",
-    "status": "not_started",
-    "priority": "medium",
-    "memo": "LETUSより自動同期",
-    "folderPath": null,
-    "createdAt": "2026-11-07T04:11:10.697800",
-    "completedAt": null,
-    "moodleUid": "577523@letus.ed.tus.ac.jp"
   }
 ];
