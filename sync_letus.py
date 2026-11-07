@@ -43,6 +43,39 @@ SUBJECT_MAP = {
     'データサイエンス': '11データサイエンス・ＡＩ応用基礎',
 }
 
+def fetch_remote_ignored_titles():
+    """Fetch real-time ignored titles & UIDs from GitHub API (or raw GitHub fallback)."""
+    gh_token = os.environ.get("GITHUB_TOKEN")
+    if gh_token:
+        try:
+            import base64
+            url = "https://api.github.com/repos/fujitomo1123581321-byte/task-radar/contents/ignored_titles.json"
+            req = urllib.request.Request(url, headers={
+                "Authorization": f"Bearer {gh_token}",
+                "User-Agent": "TaskRadarSync",
+                "Accept": "application/vnd.github.v3+json"
+            })
+            with urllib.request.urlopen(req, timeout=5) as res:
+                data = json.loads(res.read().decode("utf-8"))
+                content = base64.b64decode(data.get("content", "")).decode("utf-8")
+                parsed = json.loads(content)
+                if isinstance(parsed, list):
+                    return parsed
+        except Exception:
+            pass
+
+    try:
+        import time
+        url = f"https://raw.githubusercontent.com/fujitomo1123581321-byte/task-radar/main/ignored_titles.json?_={int(time.time())}"
+        req = urllib.request.Request(url, headers={"User-Agent": "TaskRadarSync", "Cache-Control": "no-cache"})
+        with urllib.request.urlopen(req, timeout=5) as res:
+            parsed = json.loads(res.read().decode("utf-8"))
+            if isinstance(parsed, list):
+                return parsed
+    except Exception:
+        pass
+    return []
+
 def load_ignored_titles():
     titles = set()
     if os.path.exists(IGNORED_PATH):
@@ -51,6 +84,15 @@ def load_ignored_titles():
                 data = json.load(f)
                 if isinstance(data, list):
                     titles.update(data)
+        except Exception:
+            pass
+    # Merge remote to prevent stale local cache from losing ignore entries
+    remote = fetch_remote_ignored_titles()
+    if remote:
+        titles.update(remote)
+        try:
+            with open(IGNORED_PATH, "w", encoding="utf-8") as f:
+                json.dump(list(titles), f, ensure_ascii=False, indent=2)
         except Exception:
             pass
     return list(titles)
@@ -244,8 +286,32 @@ def fetch_and_sync():
         # Check ignore filters
         ignore_kw = cfg.get("ignore_keywords", [])
         ignored_titles = cfg.get("ignored_titles", [])
+
+        # 1. Direct UID match (100% immutable and accurate)
+        if uid and uid in ignored_titles:
+            continue
+
+        # 2. Strict & normalized title match
+        norm_title = re.sub(r'[\s（）()「」_・\-]', '', title).lower()
+        norm_raw = re.sub(r'[\s（）()「」_・\-]', '', raw_summary).lower()
+
+        is_ignored = False
+        for ig in ignored_titles:
+            if not ig:
+                continue
+            if ig == uid or ig == title or ig in raw_summary:
+                is_ignored = True
+                break
+            norm_ig = re.sub(r'[\s（）()「」_・\-]', '', ig).lower()
+            if norm_ig and (norm_ig == norm_title or norm_ig in norm_raw or (len(norm_ig) >= 4 and norm_ig in norm_title)):
+                is_ignored = True
+                break
+
+        if is_ignored:
+            continue
+
         combined_text = f"{raw_summary} {title} {raw_desc}"
-        if any(k in combined_text for k in ignore_kw) or title in ignored_titles:
+        if any(k in combined_text for k in ignore_kw):
             continue
         subject = resolve_subject(raw_category, title, raw_desc)
 
@@ -331,7 +397,7 @@ def fetch_and_sync():
             status = subprocess.run(["git", "status", "--porcelain"] + files, cwd=BASE_DIR, capture_output=True, text=True)
             if any(f in status.stdout for f in files):
                 subprocess.run(["git", "add"] + files, cwd=BASE_DIR, check=True, capture_output=True)
-                msg = f"Auto-sync LETUS assignments (New: {len(new_items)}, Updated: {updated_count})"
+                msg = f"Auto-sync LETUS assignments (New: {len(new_items)}, Updated: {updated_count}) [skip render] [skip ci]"
                 subprocess.run(["git", "commit", "-m", msg], cwd=BASE_DIR, check=True, capture_output=True)
                 subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, check=True, capture_output=True)
                 print("🚀 GitHubへ自動プッシュしました！")

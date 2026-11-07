@@ -44,23 +44,67 @@ IGNORED_PATH = os.path.join(BASE_DIR, "ignored_titles.json")
 
 JST = timezone(timedelta(hours=9))
 
-def load_ignored_titles():
+def fetch_remote_ignored_titles():
+    """Fetch latest ignored titles and UIDs from GitHub API (or raw GitHub fallback)."""
+    gh_token = CONFIG.get("github_token") or os.environ.get("GITHUB_TOKEN")
+    if gh_token:
+        try:
+            url = "https://api.github.com/repos/fujitomo1123581321-byte/task-radar/contents/ignored_titles.json"
+            req = urllib.request.Request(url, headers={
+                "Authorization": f"Bearer {gh_token}",
+                "User-Agent": "TaskRadarBot",
+                "Accept": "application/vnd.github.v3+json"
+            })
+            with urllib.request.urlopen(req, timeout=5) as res:
+                data = json.loads(res.read().decode("utf-8"))
+                content = base64.b64decode(data.get("content", "")).decode("utf-8")
+                parsed = json.loads(content)
+                if isinstance(parsed, list):
+                    return parsed
+        except Exception:
+            pass
+
+    try:
+        url = f"https://raw.githubusercontent.com/fujitomo1123581321-byte/task-radar/main/ignored_titles.json?_={int(time.time())}"
+        req = urllib.request.Request(url, headers={"User-Agent": "TaskRadarBot", "Cache-Control": "no-cache"})
+        with urllib.request.urlopen(req, timeout=5) as res:
+            parsed = json.loads(res.read().decode("utf-8"))
+            if isinstance(parsed, list):
+                return parsed
+    except Exception:
+        pass
+    return []
+
+def load_ignored_titles(force_remote: bool = False):
+    local = []
     if os.path.exists(IGNORED_PATH):
         try:
             with open(IGNORED_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
-                    return data
+                    local = data
         except Exception:
-            pass
-    return []
+            local = []
+    if force_remote or not local:
+        remote = fetch_remote_ignored_titles()
+        if remote:
+            merged = list(dict.fromkeys(local + remote))
+            try:
+                with open(IGNORED_PATH, "w", encoding="utf-8") as f:
+                    json.dump(merged, f, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
+            return merged
+    return local
 
 def save_ignored_titles(titles):
     try:
+        remote = fetch_remote_ignored_titles()
+        all_titles = list(dict.fromkeys(list(titles) + remote))
         with open(IGNORED_PATH, "w", encoding="utf-8") as f:
-            json.dump(list(set(titles)), f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+            json.dump(all_titles, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[Save Ignored Error] {e}")
 
 def load_config():
     cfg = {}
@@ -293,6 +337,11 @@ def sync_to_github_via_api(path: str, content_bytes: bytes, commit_msg: str, tok
 def git_push_sync(commit_msg="Update assignments via Discord Bot"):
     """Dual-mode sync: GitHub API (Cloud) or Git Subprocess (Local)"""
     with DATA_LOCK:
+        # Avoid triggering cascading Render redeploy loops on data sync
+        if "[skip render]" not in commit_msg:
+            commit_msg = f"{commit_msg} [skip render] [skip ci]"
+        # Always merge latest remote ignored titles before pushing
+        load_ignored_titles(force_remote=True)
         gh_token = CONFIG.get("github_token") or os.environ.get("GITHUB_TOKEN")
         
         if gh_token:
@@ -719,12 +768,15 @@ _periodic_sync_started = False
 
 async def cloud_periodic_letus_sync():
     """24/7 Cloud Background Loop: checks LETUS every 1 hour, auto-pushes to GitHub/Web and notifies Discord"""
-    await asyncio.sleep(45)  # Wait 45s for bot setup & port binding
+    await asyncio.sleep(300)  # Wait 5 min for server setup and prevent redeploy startup races
     while True:
         try:
             cfg = load_config()
             cal_url = cfg.get("letus_calendar_url") or os.environ.get("LETUS_CALENDAR_URL")
             if cal_url:
+                # Ensure local cache is in sync with GitHub before sync calculations
+                load_assignments(force_remote=True)
+                load_ignored_titles(force_remote=True)
                 print(f"[{datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')}] [Cloud LETUS Sync] Starting hourly background sync...")
                 import sync_letus
                 loop = asyncio.get_running_loop()
@@ -1410,8 +1462,25 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
 
                 with DATA_LOCK:
                     assignments = load_assignments(force_remote=True)
+                    target = next((a for a in assignments if str(a.get("id")) == str(task_id)), None)
+                    moodle_uid = target.get("moodleUid") if target else None
+
                     new_assignments = [a for a in assignments if str(a.get("id")) != str(task_id)]
                     save_assignments(new_assignments)
+
+                    # If this was a LETUS task, permanently ignore so auto-sync never resurrects it!
+                    if moodle_uid or (target and target.get("submissionMethod") == "LETUS"):
+                        cur_ignored = load_ignored_titles(force_remote=True)
+                        changed = False
+                        if title and title not in cur_ignored:
+                            cur_ignored.append(title)
+                            changed = True
+                        if moodle_uid and moodle_uid not in cur_ignored:
+                            cur_ignored.append(moodle_uid)
+                            changed = True
+                        if changed:
+                            save_ignored_titles(cur_ignored)
+
                     schedule_git_push(f"Delete task '{title}' via Web", delay=3.0)
 
                 self.send_response(200)
@@ -1436,15 +1505,23 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
 
                 with DATA_LOCK:
                     assignments = load_assignments(force_remote=True)
+                    target = next((a for a in assignments if str(a.get("id")) == str(task_id) or a.get("title") == title), None)
+                    moodle_uid = target.get("moodleUid") if target else None
+
                     new_assignments = [a for a in assignments if a.get("title") != title and str(a.get("id")) != str(task_id)]
                     save_assignments(new_assignments)
 
-                    # Persist in ignored_titles.json (committed to git so GitHub Actions never resurrects it)
-                    if title:
-                        cur_ignored = load_ignored_titles()
-                        if title not in cur_ignored:
-                            cur_ignored.append(title)
-                            save_ignored_titles(cur_ignored)
+                    # Persist both title and moodleUid in ignored_titles.json (committed to git so sync never resurrects it)
+                    cur_ignored = load_ignored_titles(force_remote=True)
+                    changed = False
+                    if title and title not in cur_ignored:
+                        cur_ignored.append(title)
+                        changed = True
+                    if moodle_uid and moodle_uid not in cur_ignored:
+                        cur_ignored.append(moodle_uid)
+                        changed = True
+                    if changed:
+                        save_ignored_titles(cur_ignored)
 
                     # Add to local config.json ignored_titles if present
                     cfg = load_config()

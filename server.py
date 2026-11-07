@@ -140,7 +140,7 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
             return
 
-        if self.path == "/api/ignore":
+        if self.path in ("/api/ignore", "/api/task-ignore", "/api/task-ignore/"):
             try:
                 content_length = int(self.headers.get("Content-Length", 0))
             except (ValueError, TypeError):
@@ -149,20 +149,35 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 data = json.loads(body)
                 title = data.get("title", "").strip() if isinstance(data, dict) else ""
-                if title:
+                task_id = data.get("id") if isinstance(data, dict) else None
+                moodle_uid = None
+
+                assign_path = os.path.join(BASE_DIR, "assignments.json")
+                if os.path.exists(assign_path):
+                    try:
+                        with open(assign_path, "r", encoding="utf-8") as af:
+                            curr_items = json.load(af)
+                        target = next((x for x in curr_items if str(x.get("id")) == str(task_id) or x.get("title") == title), None)
+                        if target:
+                            moodle_uid = target.get("moodleUid")
+                    except Exception:
+                        pass
+
+                if title or moodle_uid:
                     cfg_path = os.path.join(BASE_DIR, "config.json")
                     cfg = {}
                     if os.path.exists(cfg_path):
                         with open(cfg_path, "r", encoding="utf-8") as f:
                             cfg = json.load(f)
                     ignored = cfg.get("ignored_titles", [])
-                    if title not in ignored:
+                    if title and title not in ignored:
                         ignored.append(title)
-                        cfg["ignored_titles"] = ignored
-                        with open(cfg_path, "w", encoding="utf-8") as f:
-                            json.dump(cfg, f, ensure_ascii=False, indent=2)
+                    if moodle_uid and moodle_uid not in ignored:
+                        ignored.append(moodle_uid)
+                    cfg["ignored_titles"] = ignored
+                    with open(cfg_path, "w", encoding="utf-8") as f:
+                        json.dump(cfg, f, ensure_ascii=False, indent=2)
 
-                    # Also persist in ignored_titles.json
                     ign_path = os.path.join(BASE_DIR, "ignored_titles.json")
                     ign_list = []
                     if os.path.exists(ign_path):
@@ -171,10 +186,67 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                                 ign_list = json.load(f)
                         except Exception:
                             ign_list = []
-                    if title not in ign_list:
+                    if title and title not in ign_list:
                         ign_list.append(title)
-                        with open(ign_path, "w", encoding="utf-8") as f:
-                            json.dump(ign_list, f, ensure_ascii=False, indent=2)
+                    if moodle_uid and moodle_uid not in ign_list:
+                        ign_list.append(moodle_uid)
+                    with open(ign_path, "w", encoding="utf-8") as f:
+                        json.dump(ign_list, f, ensure_ascii=False, indent=2)
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success"}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
+            return
+
+        if self.path in ("/api/task-delete", "/api/task-delete/"):
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+            except (ValueError, TypeError):
+                content_length = 0
+            body = self.rfile.read(content_length).decode("utf-8")
+            try:
+                data = json.loads(body)
+                task_id = data.get("id") if isinstance(data, dict) else None
+                title = data.get("title", "").strip() if isinstance(data, dict) else ""
+
+                assign_path = os.path.join(BASE_DIR, "assignments.json")
+                if os.path.exists(assign_path):
+                    try:
+                        with open(assign_path, "r", encoding="utf-8") as af:
+                            curr_items = json.load(af)
+                        target = next((x for x in curr_items if str(x.get("id")) == str(task_id)), None)
+                        if target:
+                            moodle_uid = target.get("moodleUid")
+                            if moodle_uid or target.get("submissionMethod") == "LETUS":
+                                ign_path = os.path.join(BASE_DIR, "ignored_titles.json")
+                                ign_list = []
+                                if os.path.exists(ign_path):
+                                    try:
+                                        with open(ign_path, "r", encoding="utf-8") as f:
+                                            ign_list = json.load(f)
+                                    except Exception:
+                                        ign_list = []
+                                if title and title not in ign_list:
+                                    ign_list.append(title)
+                                if moodle_uid and moodle_uid not in ign_list:
+                                    ign_list.append(moodle_uid)
+                                with open(ign_path, "w", encoding="utf-8") as f:
+                                    json.dump(ign_list, f, ensure_ascii=False, indent=2)
+
+                        new_items = [x for x in curr_items if str(x.get("id")) != str(task_id)]
+                        with open(assign_path, "w", encoding="utf-8") as af:
+                            json.dump(new_items, af, ensure_ascii=False, indent=2)
+                        js_path = os.path.join(BASE_DIR, "assignments.js")
+                        with open(js_path, "w", encoding="utf-8") as jf:
+                            jf.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(new_items, ensure_ascii=False, indent=2) + ";\n")
+                    except Exception:
+                        pass
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
