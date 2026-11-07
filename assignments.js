@@ -1,4 +1,4 @@
-window.INITIAL_ASSIGNMENTS = [
+window.assignmentsData = [
   {
     "id": "task-p01",
     "category": "personal",
@@ -43,8 +43,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.298334",
     "completedAt": "2026-10-14T20:32:53.298336",
     "moodleUid": "642095@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2228448",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261014203253-2",
@@ -205,8 +205,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.298916",
     "completedAt": "2026-10-17T21:35:40.321809+09:00",
     "moodleUid": "577531@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261014203253-13",
@@ -238,8 +238,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.299005",
     "completedAt": "2026-10-19T00:55:14.087116+09:00",
     "moodleUid": "642096@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2228448",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261014203253-15",
@@ -321,8 +321,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.299292",
     "completedAt": "2026-11-01T16:02:24.640116+09:00",
     "moodleUid": "577537@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261014203253-22",
@@ -355,8 +355,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.299382",
     "completedAt": null,
     "moodleUid": "575546@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261014203253-24",
@@ -372,8 +372,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.299422",
     "completedAt": null,
     "moodleUid": "577522@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261014203253-25",
@@ -389,8 +389,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.299460",
     "completedAt": null,
     "moodleUid": "577532@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261014203253-26",
@@ -406,8 +406,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.299727",
     "completedAt": null,
     "moodleUid": "642190@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261014203253-27",
@@ -423,8 +423,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.299781",
     "completedAt": null,
     "moodleUid": "577517@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261014203253-28",
@@ -440,8 +440,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.299836",
     "completedAt": null,
     "moodleUid": "577538@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261015042535-2",
@@ -457,8 +457,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-15T04:25:35.208538",
     "completedAt": "2026-10-28T15:30:13.500943+09:00",
     "moodleUid": "577516@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261015140239-0",
@@ -702,8 +702,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-19T08:11:57.264353",
     "completedAt": "2026-10-25T23:59:00",
     "moodleUid": "642097@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2228448",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261019161814-0",
@@ -734,8 +734,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-19T16:18:14.966754",
     "completedAt": null,
     "moodleUid": "577533@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "custom-20261020120034",
@@ -910,8 +910,8 @@ window.INITIAL_ASSIGNMENTS = [
     "folderPath": null,
     "createdAt": "2026-10-21T21:28:15.345419+09:00",
     "completedAt": "2026-10-22T13:32:14.578166+09:00",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "custom-20261022114825",
@@ -926,8 +926,8 @@ window.INITIAL_ASSIGNMENTS = [
     "folderPath": null,
     "createdAt": "2026-10-22T11:48:25.774071+09:00",
     "completedAt": "2026-10-23T20:43:07.708135+09:00",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "custom-20261022151640",
@@ -1021,8 +1021,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-26T10:43:45.596767",
     "completedAt": null,
     "moodleUid": "570207@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261026131958-0",
@@ -1070,8 +1070,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-26T07:36:46.275519",
     "completedAt": "2026-11-01T22:14:18.289640+09:00",
     "moodleUid": "642098@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2228448",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261026081240-0",
@@ -1314,8 +1314,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-11-02T15:04:24.346721",
     "completedAt": null,
     "moodleUid": "577539@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2088206",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261103025233-0",
@@ -1347,8 +1347,8 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-11-03T04:10:47.016805",
     "completedAt": "2026-11-03T20:08:59.237860+09:00",
     "moodleUid": "661357@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2228448",
-    "letusSubmitted": true
+    "letusUrl": null,
+    "letusSubmitted": false
   },
   {
     "id": "letus-20261104104341-0",
