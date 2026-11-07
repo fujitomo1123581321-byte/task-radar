@@ -410,23 +410,6 @@
     "letusSubmitted": false
   },
   {
-    "id": "letus-20261014203253-27",
-    "category": "academic",
-    "subject": "08実験",
-    "title": "実験⑥(D直前) 前組",
-    "deadline": "2026-11-27T23:59:00",
-    "submissionMethod": "LETUS",
-    "status": "not_started",
-    "priority": "medium",
-    "memo": "LETUSより自動同期",
-    "folderPath": null,
-    "createdAt": "2026-10-14T20:32:53.299781",
-    "completedAt": null,
-    "moodleUid": "577517@letus.ed.tus.ac.jp",
-    "letusUrl": null,
-    "letusSubmitted": false
-  },
-  {
     "id": "letus-20261014203253-28",
     "category": "academic",
     "subject": "08実験",
