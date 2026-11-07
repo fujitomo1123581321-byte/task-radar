@@ -359,23 +359,6 @@
     "letusSubmitted": false
   },
   {
-    "id": "letus-20261014203253-24",
-    "category": "academic",
-    "subject": "08実験",
-    "title": "実験⑤(R) 前組",
-    "deadline": "2026-11-13T23:59:00",
-    "submissionMethod": "LETUS",
-    "status": "not_started",
-    "priority": "medium",
-    "memo": "LETUSより自動同期",
-    "folderPath": null,
-    "createdAt": "2026-10-14T20:32:53.299422",
-    "completedAt": null,
-    "moodleUid": "577522@letus.ed.tus.ac.jp",
-    "letusUrl": null,
-    "letusSubmitted": false
-  },
-  {
     "id": "letus-20261014203253-25",
     "category": "academic",
     "subject": "08実験",
