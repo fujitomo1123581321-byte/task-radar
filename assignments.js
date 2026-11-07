@@ -1387,11 +1387,11 @@ window.INITIAL_ASSIGNMENTS = [
     "deadline": "2026-11-08T17:00",
     "submissionMethod": "LETUS",
     "priority": "medium",
-    "status": "not_started",
+    "status": "submitted",
     "memo": "",
     "letusUrl": null,
     "createdAt": "2026-11-05T06:27:49.403Z",
-    "completedAt": null
+    "completedAt": "2026-11-07T18:32:40.946628+09:00"
   },
   {
     "id": "letus-20261107015804-0",
