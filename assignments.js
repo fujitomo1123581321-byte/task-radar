@@ -1428,21 +1428,6 @@ window.INITIAL_ASSIGNMENTS = [
     "completedAt": null
   },
   {
-    "id": "letus-20261106101159-0",
-    "category": "academic",
-    "subject": "08実験",
-    "title": "実験⑥(R) 前組",
-    "deadline": "2026-12-11T23:59:00",
-    "submissionMethod": "LETUS",
-    "status": "not_started",
-    "priority": "medium",
-    "memo": "LETUSより自動同期",
-    "folderPath": null,
-    "createdAt": "2026-11-06T10:11:59.940519",
-    "completedAt": null,
-    "moodleUid": "577523@letus.ed.tus.ac.jp"
-  },
-  {
     "id": "letus-20261107015804-0",
     "category": "academic",
     "subject": "11データサイエンス・ＡＩ応用基礎",
