@@ -1407,5 +1407,19 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-11-07T01:58:04.001630",
     "completedAt": null,
     "moodleUid": "638964@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "task-1794116893625",
+    "category": "personal",
+    "subject": "サークル・バイト",
+    "title": "ドームの補修用にタオル買う（タオル転用でもよい）",
+    "deadline": "2026-11-09T23:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "letusUrl": null,
+    "createdAt": "2026-11-08T05:48:13.625Z",
+    "completedAt": null
   }
 ];
