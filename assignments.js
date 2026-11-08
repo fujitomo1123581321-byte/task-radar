@@ -1096,7 +1096,7 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "ドームの雨漏り補修",
     "deadline": "2026-11-02T23:59:00",
     "submissionMethod": "Discord Bot",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": "medium",
     "memo": "Discordより登録",
     "folderPath": null,
