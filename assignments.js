@@ -803,7 +803,7 @@ window.INITIAL_ASSIGNMENTS = [
     "submissionMethod": "Discord Bot",
     "status": "not_started",
     "priority": "medium",
-    "memo": "今週中",
+    "memo": "今週中\nシュミットに在庫確認の電話する",
     "folderPath": null,
     "createdAt": "2026-10-20T17:07:52.973462+09:00",
     "completedAt": null
