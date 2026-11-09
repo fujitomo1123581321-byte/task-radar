@@ -1501,12 +1501,12 @@
     "title": "workout example８回目提出",
     "deadline": "2026-11-09T20:00:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "submitted",
     "priority": "medium",
     "memo": "LETUSより自動同期",
     "folderPath": null,
     "createdAt": "2026-11-09T08:57:27.594149",
-    "completedAt": null,
+    "completedAt": "2026-11-09T21:05:52.791487+09:00",
     "moodleUid": "650180@letus.ed.tus.ac.jp"
   }
 ]
