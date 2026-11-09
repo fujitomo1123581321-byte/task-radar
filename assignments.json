@@ -1421,5 +1421,19 @@
     "letusUrl": null,
     "createdAt": "2026-11-08T05:48:13.625Z",
     "completedAt": null
+  },
+  {
+    "id": "task-1794196550123",
+    "category": "personal",
+    "subject": "サークル・バイト",
+    "title": "EM-1三脚、リモコン（１，１S）や電源（なかったり接触悪い）、",
+    "deadline": "2026-11-10T17:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "letusUrl": null,
+    "createdAt": "2026-11-09T03:55:50.123Z",
+    "completedAt": null
   }
 ]
