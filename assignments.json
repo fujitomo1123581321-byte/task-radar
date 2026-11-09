@@ -1463,5 +1463,35 @@
     "letusUrl": null,
     "createdAt": "2026-11-09T04:13:15.561Z",
     "completedAt": null
+  },
+  {
+    "id": "letus-20261109075056-0",
+    "category": "academic",
+    "subject": "02統計力学2",
+    "title": "レポート課題 締め切り11/15(日)23:59(JST)",
+    "deadline": "2026-11-15T23:59:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "high",
+    "memo": "演習問題4-1, 4-2, 4-3, 4-4のから少なくとも一問を解いて提出してください。  ",
+    "folderPath": null,
+    "createdAt": "2026-11-09T07:50:56.121582",
+    "completedAt": null,
+    "moodleUid": "642100@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261109075056-1",
+    "category": "academic",
+    "subject": "05原子核物理",
+    "title": "中間試験のために作成した資料のupload先",
+    "deadline": "2026-11-16T16:15:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-11-09T07:50:56.121932",
+    "completedAt": null,
+    "moodleUid": "650176@letus.ed.tus.ac.jp"
   }
 ]
