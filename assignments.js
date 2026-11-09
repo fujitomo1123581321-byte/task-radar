@@ -798,7 +798,7 @@ window.INITIAL_ASSIGNMENTS = [
     "id": "custom-20261020170752",
     "category": "personal",
     "subject": "個人",
-    "title": "てレビュー パワー名と買う",
+    "title": "てレビュー パワー名と買う（13:00～14:00）で",
     "deadline": "2026-10-31T23:59",
     "submissionMethod": "Discord Bot",
     "status": "not_started",
