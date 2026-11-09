@@ -1493,5 +1493,20 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-11-09T07:50:56.121932",
     "completedAt": null,
     "moodleUid": "650176@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "letus-20261109085727-0",
+    "category": "academic",
+    "subject": "05原子核物理",
+    "title": "workout example８回目提出",
+    "deadline": "2026-11-09T20:00:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-11-09T08:57:27.594149",
+    "completedAt": null,
+    "moodleUid": "650180@letus.ed.tus.ac.jp"
   }
 ];
