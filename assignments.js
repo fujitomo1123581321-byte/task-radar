@@ -1435,5 +1435,19 @@ window.INITIAL_ASSIGNMENTS = [
     "letusUrl": null,
     "createdAt": "2026-11-09T03:55:50.123Z",
     "completedAt": null
+  },
+  {
+    "id": "task-1794196567743",
+    "category": "personal",
+    "subject": "サークル・バイト",
+    "title": "アイピース、赤道儀",
+    "deadline": "2026-11-10T17:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "letusUrl": null,
+    "createdAt": "2026-11-09T03:56:07.743Z",
+    "completedAt": null
   }
 ];
