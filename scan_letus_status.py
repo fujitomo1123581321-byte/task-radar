@@ -36,7 +36,19 @@ ACTIVE_COURSES = [
     {"name": "宇宙科学総合", "id": 173828}
 ]
 
-BROWSER_PROFILE_DIR = os.path.join(BASE_DIR, ".letus_browser_profile")
+# Prefer local SSD path (%LOCALAPPDATA%\TaskRadar\letus_browser_profile) to avoid Box Drive sync locks
+LOCAL_APP_DATA = os.environ.get("LOCALAPPDATA")
+if LOCAL_APP_DATA:
+    BROWSER_PROFILE_DIR = os.path.join(LOCAL_APP_DATA, "TaskRadar", "letus_browser_profile")
+    OLD_PROFILE_DIR = os.path.join(BASE_DIR, ".letus_browser_profile")
+    if os.path.exists(OLD_PROFILE_DIR) and not os.path.exists(BROWSER_PROFILE_DIR):
+        try:
+            import shutil
+            shutil.copytree(OLD_PROFILE_DIR, BROWSER_PROFILE_DIR)
+        except Exception:
+            pass
+else:
+    BROWSER_PROFILE_DIR = os.path.join(BASE_DIR, ".letus_browser_profile")
 LAST_MORNING_SCAN_PATH = os.path.join(BASE_DIR, "last_morning_scan.json")
 CLOUD_API_URL = "https://task-radar-us.onrender.com/api/task-status"
 

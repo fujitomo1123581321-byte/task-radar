@@ -18,9 +18,9 @@ $settings = New-ScheduledTaskSettingsSet `
 # 1. 朝一番スマートチェッカー (PC起動・ログイン時の初回のみ実行)
 # ------------------------------------------------------------------------------
 $morningTaskName = "LetusMorningSubmissionChecker"
-$morningAction = New-ScheduledTaskAction -Execute $wscript -Argument "`"$morningVbs`"" -WorkingDirectory $baseDir
+$morningAction = New-ScheduledTaskAction -Execute $wscript -Argument "`"$morningVbs`""
 $morningTrigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
-$morningTrigger.Delay = 'PT1M' # ログイン後1分待機して負荷分散
+$morningTrigger.Delay = 'PT3M' # ログイン後3分待機 (Boxマウント完了・Wi-Fi接続・起動負荷の安定待ち)
 
 Unregister-ScheduledTask -TaskName $morningTaskName -Confirm:$false -ErrorAction SilentlyContinue
 Register-ScheduledTask `
@@ -30,13 +30,13 @@ Register-ScheduledTask `
     -Settings $settings `
     -Description "朝(06:00-12:00)のPCログイン初回のみ、LETUS実提出状況を静かに点検するスマートチェッカー"
 
-Write-Host "✅ 登録完了: $morningTaskName (朝一番PCオープン時)"
+Write-Host "✅ 登録完了: $morningTaskName (朝一番PCオープン時、ログイン3分後に起動)"
 
 # ------------------------------------------------------------------------------
 # 2. 毎晩20:00 夜の締切前チェッカー (毎日 20:00 定期実行)
 # ------------------------------------------------------------------------------
 $eveningTaskName = "LetusEveningSubmissionChecker"
-$eveningAction = New-ScheduledTaskAction -Execute $wscript -Argument "`"$eveningVbs`"" -WorkingDirectory $baseDir
+$eveningAction = New-ScheduledTaskAction -Execute $wscript -Argument "`"$eveningVbs`""
 $eveningTrigger = New-ScheduledTaskTrigger -Daily -At "20:00:00"
 
 Unregister-ScheduledTask -TaskName $eveningTaskName -Confirm:$false -ErrorAction SilentlyContinue
