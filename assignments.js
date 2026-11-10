@@ -1538,5 +1538,19 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-11-10T04:08:08.071619",
     "completedAt": null,
     "moodleUid": "664303@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "task-1794284342848",
+    "category": "personal",
+    "subject": "サークル・バイト",
+    "title": "90S（クリーム）の三脚を直す",
+    "deadline": "2026-11-11T17:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "letusUrl": null,
+    "createdAt": "2026-11-10T04:19:02.848Z",
+    "completedAt": null
   }
 ];
