@@ -1552,5 +1552,19 @@
     "letusUrl": null,
     "createdAt": "2026-11-10T04:19:02.848Z",
     "completedAt": null
+  },
+  {
+    "id": "task-1794297913597",
+    "category": "personal",
+    "subject": "サークル・バイト",
+    "title": "c8のプレート、接眼アダプター",
+    "deadline": "2026-11-11T17:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "letusUrl": null,
+    "createdAt": "2026-11-10T08:05:13.597Z",
+    "completedAt": null
   }
 ]
