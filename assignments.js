@@ -1566,5 +1566,19 @@ window.INITIAL_ASSIGNMENTS = [
     "letusUrl": null,
     "createdAt": "2026-11-10T08:05:13.597Z",
     "completedAt": null
+  },
+  {
+    "id": "task-1794297927915",
+    "category": "personal",
+    "subject": "サークル・バイト",
+    "title": "インパクト",
+    "deadline": "2026-11-11T17:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "letusUrl": null,
+    "createdAt": "2026-11-10T08:05:27.915Z",
+    "completedAt": null
   }
 ];
