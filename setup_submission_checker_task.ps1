@@ -1,12 +1,31 @@
-# ==============================================================================
+﻿# ==============================================================================
 # setup_submission_checker_task.ps1
-# Windowsタスクスケジューラに LETUS実提出チェッカー（朝一番＆夜20時）を自動登録
+# Windows Task Scheduler LETUS Submission Checker Registration
+# (Pure ASCII path: launches pythonw.exe directly from local SSD)
 # ==============================================================================
 
-$baseDir = "c:\Users\fujit\Box\01学業2026年度\20"
-$wscript = "$env:SystemRoot\System32\wscript.exe"
-$morningVbs = Join-Path $baseDir "check_morning_submission.vbs"
-$eveningVbs = Join-Path $baseDir "check_letus_submissions.vbs"
+$localApp = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::LocalApplicationData)
+$taskRadarDir = Join-Path $localApp "TaskRadar"
+if (-not (Test-Path $taskRadarDir)) {
+    New-Item -ItemType Directory -Path $taskRadarDir -Force | Out-Null
+}
+
+$workspaceDir = $PSScriptRoot
+if (-not $workspaceDir) {
+    $workspaceDir = "c:\Users\fujit\Box\01学業2026年度\20"
+}
+
+# 1. Copy runner script to local SSD (pure ASCII path)
+$srcRunner = Join-Path $workspaceDir "run_letus_task.py"
+$destRunner = Join-Path $taskRadarDir "run_letus_task.py"
+if (Test-Path $srcRunner) {
+    Copy-Item $srcRunner $destRunner -Force
+}
+
+$pythonw = Join-Path $localApp "Programs\Python\Python313\pythonw.exe"
+if (-not (Test-Path $pythonw)) {
+    $pythonw = "pythonw.exe"
+}
 
 $settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
@@ -15,12 +34,12 @@ $settings = New-ScheduledTaskSettingsSet `
     -MultipleInstances IgnoreNew
 
 # ------------------------------------------------------------------------------
-# 1. 朝一番スマートチェッカー (PC起動・ログイン時の初回のみ実行)
+# 1. Morning Smart Checker (Login + 3min delay)
 # ------------------------------------------------------------------------------
 $morningTaskName = "LetusMorningSubmissionChecker"
-$morningAction = New-ScheduledTaskAction -Execute $wscript -Argument "`"$morningVbs`""
+$morningAction = New-ScheduledTaskAction -Execute $pythonw -Argument "`"$destRunner`" --morning"
 $morningTrigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
-$morningTrigger.Delay = 'PT3M' # ログイン後3分待機 (Boxマウント完了・Wi-Fi接続・起動負荷の安定待ち)
+$morningTrigger.Delay = 'PT3M'
 
 Unregister-ScheduledTask -TaskName $morningTaskName -Confirm:$false -ErrorAction SilentlyContinue
 Register-ScheduledTask `
@@ -28,15 +47,15 @@ Register-ScheduledTask `
     -Action $morningAction `
     -Trigger $morningTrigger `
     -Settings $settings `
-    -Description "朝(06:00-12:00)のPCログイン初回のみ、LETUS実提出状況を静かに点検するスマートチェッカー"
+    -Description "LETUS Morning Smart Submission Checker"
 
-Write-Host "✅ 登録完了: $morningTaskName (朝一番PCオープン時、ログイン3分後に起動)"
+Write-Host "[OK] Registered: $morningTaskName"
 
 # ------------------------------------------------------------------------------
-# 2. 毎晩20:00 夜の締切前チェッカー (毎日 20:00 定期実行)
+# 2. Evening Checker (Daily 20:00)
 # ------------------------------------------------------------------------------
 $eveningTaskName = "LetusEveningSubmissionChecker"
-$eveningAction = New-ScheduledTaskAction -Execute $wscript -Argument "`"$eveningVbs`""
+$eveningAction = New-ScheduledTaskAction -Execute $pythonw -Argument "`"$destRunner`" --evening"
 $eveningTrigger = New-ScheduledTaskTrigger -Daily -At "20:00:00"
 
 Unregister-ScheduledTask -TaskName $eveningTaskName -Confirm:$false -ErrorAction SilentlyContinue
@@ -45,6 +64,6 @@ Register-ScheduledTask `
     -Action $eveningAction `
     -Trigger $eveningTrigger `
     -Settings $settings `
-    -Description "毎晩20:00にLETUS実提出状況を静かに点検し、提出完了の反映＆誤完了の警告復元を行うチェッカー"
+    -Description "LETUS Evening Daily Submission Checker"
 
-Write-Host "✅ 登録完了: $eveningTaskName (毎日 20:00 定期実行)"
+Write-Host "[OK] Registered: $eveningTaskName"
