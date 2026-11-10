@@ -1523,5 +1523,20 @@ window.INITIAL_ASSIGNMENTS = [
     "letusUrl": null,
     "createdAt": "2026-11-10T02:06:25.710Z",
     "completedAt": null
+  },
+  {
+    "id": "letus-20261110040808-0",
+    "category": "academic",
+    "subject": "04天体物理学",
+    "title": "課題 11/10",
+    "deadline": "2026-11-10T15:00:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "medium",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-11-10T04:08:08.071619",
+    "completedAt": null,
+    "moodleUid": "664303@letus.ed.tus.ac.jp"
   }
 ];
