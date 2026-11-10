@@ -300,7 +300,8 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                         const courseEl = card.querySelector('.course, .text-muted, a[href*="/course/view.php"]');
                         if (linkEl) {
                             const title = titleEl ? titleEl.innerText.trim() : linkEl.innerText.trim();
-                            const href = linkEl.href;
+                            const rawHref = linkEl.href || '';
+                            const href = rawHref.replace(/([?&])action=editsubmission(&|$)/, '$1').replace(/[?&]$/, '');
                             const course = courseEl ? courseEl.innerText.trim() : '';
                             if (href && !results.some(r => r.href === href)) {
                                 results.push({ title, href, course });
@@ -311,7 +312,8 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                         const links = document.querySelectorAll('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"], a[href*="/mod/feedback/view.php"], a[href*="/mod/questionnaire/view.php"], a[href*="/mod/forum/view.php"]');
                         links.forEach(a => {
                             const title = a.innerText.trim();
-                            const href = a.href;
+                            const rawHref = a.href || '';
+                            const href = rawHref.replace(/([?&])action=editsubmission(&|$)/, '$1').replace(/[?&]$/, '');
                             if (title && href && !results.some(r => r.href === href)) {
                                 results.push({ title, href, course: '' });
                             }

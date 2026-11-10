@@ -1453,7 +1453,10 @@
     function getLetusUrl(a) {
       if (!a) return null;
       // 1. Direct assignment URL (e.g. https://letus.ed.tus.ac.jp/mod/assign/view.php?id=...)
-      if (a.letusUrl) return a.letusUrl;
+      if (a.letusUrl) {
+        // Strip action=editsubmission to always open the canonical view/status page
+        return a.letusUrl.replace(/([?&])action=editsubmission(&|$)/, '$1').replace(/[?&]$/, '');
+      }
 
       // 2. Academic / LETUS tasks
       if (a.category === 'academic' || a.submissionMethod === 'LETUS' || a.moodleUid || (a.memo && a.memo.includes('LETUS'))) {

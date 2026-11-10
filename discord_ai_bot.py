@@ -1404,7 +1404,8 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                         if target:
                             changed = False
                             if "letusUrl" in item and item.get("letusUrl"):
-                                target["letusUrl"] = item.get("letusUrl")
+                                clean_url = re.sub(r'([?&])action=editsubmission(&|$)', r'\1', item.get("letusUrl")).rstrip('?&')
+                                target["letusUrl"] = clean_url
                                 changed = True
                             if "letusSubmitted" in item:
                                 target["letusSubmitted"] = item.get("letusSubmitted")

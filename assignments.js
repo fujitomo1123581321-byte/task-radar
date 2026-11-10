@@ -157,7 +157,7 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.298727",
     "completedAt": "2026-10-14T20:32:53.298729",
     "moodleUid": "575538@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2282259&action=editsubmission"
+    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2282259"
   },
   {
     "id": "letus-20261014203253-9",
@@ -272,7 +272,7 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-14T20:32:53.299085",
     "completedAt": "2026-10-21T16:26:02.044925+09:00",
     "moodleUid": "575539@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2282259&action=editsubmission"
+    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2282259"
   },
   {
     "id": "letus-20261014203253-17",
@@ -971,7 +971,7 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-26T10:43:45.595606",
     "completedAt": "2026-11-04T20:02:18.651031+09:00",
     "moodleUid": "575544@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2282259&action=editsubmission"
+    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2282259"
   },
   {
     "id": "letus-20261026104345-1",
@@ -1186,7 +1186,7 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-10-31T15:41:28.545621",
     "completedAt": null,
     "moodleUid": "661146@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2282259&action=editsubmission"
+    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2282259"
   },
   {
     "id": "task-1793578349645",
@@ -1346,7 +1346,7 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-11-05T02:05:10.080539",
     "completedAt": "2026-11-10T12:04:19.755242+09:00",
     "moodleUid": "651387@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2255101&action=editsubmission"
+    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2255101"
   },
   {
     "id": "letus-20261105060743-0",
@@ -1377,7 +1377,7 @@ window.INITIAL_ASSIGNMENTS = [
     "createdAt": "2026-11-05T06:07:43.829021",
     "completedAt": null,
     "moodleUid": "575569@letus.ed.tus.ac.jp",
-    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2282259&action=editsubmission"
+    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2282259"
   },
   {
     "id": "task-1793860069403",
