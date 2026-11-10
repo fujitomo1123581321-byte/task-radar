@@ -428,6 +428,58 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                             urls_updated.append(a)
                         break
 
+            # Fallback: sweep course page if calendar didn't have this task
+            if not target_url and ACTIVE_COURSES:
+                matched_course = None
+                for c in ACTIVE_COURSES:
+                    c_name_norm = re.sub(r'[\s\d・()（）]', '', c["name"]).lower()
+                    subj_norm = re.sub(r'[\s\d・()（）]', '', subject).lower()
+                    if (len(subj_norm) >= 2 and subj_norm[:3] in c_name_norm) or (len(c_name_norm) >= 2 and c_name_norm[:3] in subj_norm):
+                        matched_course = c
+                        break
+
+                if matched_course:
+                    course_url = f"https://letus.ed.tus.ac.jp/course/view.php?id={matched_course['id']}"
+                    try:
+                        print(f"  カレンダー未掲載のためコースから探索中: 【{matched_course['name']}】({course_url})")
+                        page.goto(course_url, wait_until="domcontentloaded", timeout=20000)
+                        time.sleep(1.0)
+                        course_links = page.evaluate("""() => {
+                            const res = [];
+                            document.querySelectorAll('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"], a[href*="/mod/feedback/view.php"], a[href*="/mod/questionnaire/view.php"], a[href*="/mod/forum/view.php"]').forEach(a => {
+                                const title = a.innerText.trim();
+                                const rawHref = a.href || '';
+                                const href = rawHref.replace(/([?&])action=editsubmission(&|$)/, '$1').replace(/[?&]$/, '');
+                                if (title && href && !res.some(r => r.href === href)) {
+                                    res.push({ title, href });
+                                }
+                            });
+                            return res;
+                        }""")
+                        c_a = re.sub(r'[「」『』()（）\[\]【】\s・:：]', '', title).lower()
+                        nums_a = re.findall(r'\d+', title)
+                        for cl in course_links:
+                            cl_title = cl.get("title", "")
+                            c_cl = re.sub(r'[「」『』()（）\[\]【】\s・:：]', '', cl_title).lower()
+                            nums_cl = re.findall(r'\d+', cl_title)
+                            if nums_a and nums_cl:
+                                if not any(n in nums_cl for n in nums_a):
+                                    continue
+                            elif nums_a and not nums_cl:
+                                continue
+
+                            clean_cl_stripped = re.sub(r'の提出期限|の受験可能期間の終了|終了|締切|課題|小テスト', '', c_cl)
+                            clean_a_stripped = re.sub(r'の提出期限|の受験可能期間の終了|終了|締切|課題|小テスト', '', c_a)
+                            if clean_a_stripped and (clean_a_stripped in clean_cl_stripped or clean_cl_stripped in clean_a_stripped):
+                                target_url = cl["href"]
+                                a["letusUrl"] = target_url
+                                if a not in urls_updated:
+                                    urls_updated.append(a)
+                                print(f"    ✨ コースページからリンクを取得成功: {target_url}")
+                                break
+                    except Exception as e:
+                        print(f"    コース探索エラー: {e}")
+
             if not target_url:
                 continue
 
