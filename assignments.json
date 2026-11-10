@@ -1508,5 +1508,19 @@
     "createdAt": "2026-11-09T08:57:27.594149",
     "completedAt": "2026-11-09T21:05:52.791487+09:00",
     "moodleUid": "650180@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "task-1794276385710",
+    "category": "academic",
+    "subject": "01物性論2A",
+    "title": "ノートまとめて保管",
+    "deadline": "2026-11-11T17:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "letusUrl": null,
+    "createdAt": "2026-11-10T02:06:25.710Z",
+    "completedAt": null
   }
 ]
