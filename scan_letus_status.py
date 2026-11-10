@@ -287,13 +287,28 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                 return
             else:
                 print("ブラウザ画面で理科大アカウントにログインしてください。")
-                print("ログインが完了してカレンダー画面が表示されるまで待機します (最大180秒)...")
+                print("ログイン完了を待機しています (最大180秒)...")
                 try:
-                    page.wait_for_url("**/calendar/**", timeout=180000)
+                    logged_in = False
+                    start_t = time.time()
+                    while time.time() - start_t < 180:
+                        cur_url = page.url
+                        if "letus.ed.tus.ac.jp" in cur_url and "idp.admin.tus.ac.jp" not in cur_url and "saml" not in cur_url.lower():
+                            logged_in = True
+                            break
+                        time.sleep(1)
+
+                    if not logged_in:
+                        print("タイムアウトしました。処理を中断します。")
+                        context.close()
+                        return
+
                     print("✅ ログインが確認できました！セッションを保持しました。")
+                    if "calendar" not in page.url:
+                        page.goto("https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming", wait_until="domcontentloaded", timeout=20000)
                     time.sleep(2)
-                except Exception:
-                    print("タイムアウトしました。処理を中断します。")
+                except Exception as e:
+                    print(f"ログイン待機エラー: {e}")
                     context.close()
                     return
 
