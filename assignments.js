@@ -1477,7 +1477,8 @@ window.INITIAL_ASSIGNMENTS = [
     "folderPath": null,
     "createdAt": "2026-11-09T07:50:56.121582",
     "completedAt": null,
-    "moodleUid": "642100@letus.ed.tus.ac.jp"
+    "moodleUid": "642100@letus.ed.tus.ac.jp",
+    "letusUrl": "https://letus.ed.tus.ac.jp/mod/assign/view.php?id=2228451"
   },
   {
     "id": "letus-20261109075056-1",
