@@ -1179,7 +1179,7 @@ window.INITIAL_ASSIGNMENTS = [
     "title": "プラズマ物理レポート課題（第1回）",
     "deadline": "2026-11-13T18:00:00",
     "submissionMethod": "LETUS",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": "high",
     "memo": "課題のPDFに記載した期日までにアップロードしてください。 Chenの教科書を見る",
     "folderPath": null,
