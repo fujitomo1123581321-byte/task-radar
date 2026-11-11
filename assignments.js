@@ -1582,5 +1582,19 @@ window.INITIAL_ASSIGNMENTS = [
     "letusUrl": null,
     "createdAt": "2026-11-10T08:05:27.915Z",
     "completedAt": null
+  },
+  {
+    "id": "task-1794395298218",
+    "category": "academic",
+    "subject": "08実験",
+    "title": "ミラー指数と消滅則について確認。なぜダイヤモンド構造で（200）が消えるのか。",
+    "deadline": "2026-11-12T17:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "letusUrl": null,
+    "createdAt": "2026-11-11T11:08:18.218Z",
+    "completedAt": null
   }
 ];
