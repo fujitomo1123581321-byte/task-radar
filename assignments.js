@@ -1596,5 +1596,20 @@ window.INITIAL_ASSIGNMENTS = [
     "letusUrl": null,
     "createdAt": "2026-11-11T11:08:18.218Z",
     "completedAt": null
+  },
+  {
+    "id": "letus-20261111134854-0",
+    "category": "academic",
+    "subject": "10国際関係論",
+    "title": "ミニテスト9(提出必須; 11/18の23:59pm締切; 再提出不可)",
+    "deadline": "2026-11-18T23:59:00",
+    "submissionMethod": "LETUS",
+    "status": "not_started",
+    "priority": "high",
+    "memo": "LETUSより自動同期",
+    "folderPath": null,
+    "createdAt": "2026-11-11T13:48:54.492382",
+    "completedAt": null,
+    "moodleUid": "643300@letus.ed.tus.ac.jp"
   }
 ];
