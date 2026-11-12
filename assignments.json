@@ -1612,5 +1612,19 @@
     "createdAt": "2026-11-11T13:48:54.492382",
     "completedAt": null,
     "moodleUid": "643300@letus.ed.tus.ac.jp"
+  },
+  {
+    "id": "task-1794490370242",
+    "category": "personal",
+    "subject": "その他",
+    "title": "バイトをしてお金を稼ぐ",
+    "deadline": "2026-11-13T17:00",
+    "submissionMethod": "LETUS",
+    "priority": "medium",
+    "status": "not_started",
+    "memo": "",
+    "letusUrl": null,
+    "createdAt": "2026-11-12T13:32:50.242Z",
+    "completedAt": null
   }
 ]
