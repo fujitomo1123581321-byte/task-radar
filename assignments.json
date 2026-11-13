@@ -1592,11 +1592,11 @@
     "deadline": "2026-11-12T17:00",
     "submissionMethod": "LETUS",
     "priority": "medium",
-    "status": "not_started",
+    "status": "submitted",
     "memo": "",
     "letusUrl": null,
     "createdAt": "2026-11-11T11:08:18.218Z",
-    "completedAt": null
+    "completedAt": "2026-11-13T17:15:05.992945+09:00"
   },
   {
     "id": "letus-20261111134854-0",
