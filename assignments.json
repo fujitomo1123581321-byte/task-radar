@@ -1418,11 +1418,11 @@
     "deadline": "2026-11-09T23:00",
     "submissionMethod": "LETUS",
     "priority": "medium",
-    "status": "in_progress",
+    "status": "submitted",
     "memo": "",
     "letusUrl": null,
     "createdAt": "2026-11-08T05:48:13.625Z",
-    "completedAt": null
+    "completedAt": "2026-11-13T17:14:56.301723+09:00"
   },
   {
     "id": "task-1794196550123",
