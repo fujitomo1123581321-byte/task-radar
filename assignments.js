@@ -1151,10 +1151,10 @@ window.INITIAL_ASSIGNMENTS = [
     "deadline": "2026-10-31T17:00",
     "submissionMethod": "",
     "priority": "medium",
-    "status": "not_started",
+    "status": "submitted",
     "memo": "ついでに執行部の対応について聞く",
     "createdAt": "2026-10-30T10:43:41.280Z",
-    "completedAt": null
+    "completedAt": "2026-11-15T12:09:50.052285+09:00"
   },
   {
     "id": "letus-20261031021455-0",
