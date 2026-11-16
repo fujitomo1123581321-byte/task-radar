@@ -86,14 +86,144 @@ def load_assignments():
 def save_assignments(assignments):
     crypto_vault.save_assignments_files(assignments, JSON_PATH, JS_PATH)
 
-def sync_to_cloud(task_id, status=None, title="", letus_url=None):
-    """Render APIにステータスやletusUrlの変更を即座にPOST通知"""
+def _merge_assignments(local_items, remote_items):
+    """Merge local and remote assignments preserving submitted statuses, URLs, and letusSubmitted flags."""
+    try:
+        from discord_ai_bot import smart_merge_assignments
+        return smart_merge_assignments(local_items, remote_items)
+    except Exception:
+        pass
+
+    if not remote_items:
+        return local_items
+    if not local_items:
+        return remote_items
+
+    local_map = {str(a.get("id")): dict(a) for a in local_items if a.get("id")}
+    local_moodle = {str(a.get("moodleUid")): str(a.get("id")) for a in local_items if a.get("moodleUid")}
+    remote_map = {str(a.get("id")): dict(a) for a in remote_items if a.get("id")}
+    merged_ids = set()
+    merged = []
+
+    for rid, rem in remote_map.items():
+        lid = rid if rid in local_map else local_moodle.get(str(rem.get("moodleUid", "")))
+        loc = local_map.get(lid) if lid else None
+        item = dict(rem)
+        if loc:
+            if loc.get("status") == "submitted" or rem.get("status") == "submitted":
+                item["status"] = "submitted"
+                item["completedAt"] = rem.get("completedAt") or loc.get("completedAt")
+            elif loc.get("status") == "in_progress" or rem.get("status") == "in_progress":
+                item["status"] = "in_progress"
+                item["completedAt"] = None
+            if loc.get("folderPath") and not rem.get("folderPath"):
+                item["folderPath"] = loc["folderPath"]
+            if loc.get("memo") and not rem.get("memo"):
+                item["memo"] = loc["memo"]
+            if loc.get("letusUrl") and not rem.get("letusUrl"):
+                item["letusUrl"] = loc["letusUrl"]
+            if loc.get("letusSubmitted") and not rem.get("letusSubmitted"):
+                item["letusSubmitted"] = True
+            elif "letusSubmitted" in loc and "letusSubmitted" not in rem:
+                item["letusSubmitted"] = loc["letusSubmitted"]
+            merged_ids.add(str(loc.get("id")))
+        merged_ids.add(rid)
+        merged.append(item)
+
+    for lid, loc in local_map.items():
+        if lid not in merged_ids:
+            merged.append(dict(loc))
+    return merged
+
+
+def _fetch_origin_assignments_and_ignored():
+    """Fetch origin/main and decrypt remote assignments.json & ignored_titles.json without touching working tree."""
+    subprocess.run(["git", "fetch", "origin", "main"], cwd=BASE_DIR, capture_output=True, timeout=20)
+    remote_items = []
+    try:
+        raw_bytes = subprocess.check_output(
+            ["git", "show", "origin/main:assignments.json"], cwd=BASE_DIR, stderr=subprocess.DEVNULL
+        )
+        remote_items = crypto_vault.decrypt_json_data(raw_bytes.decode("utf-8"), default=[])
+    except Exception:
+        remote_items = []
+
+    remote_ignored = set()
+    try:
+        ign_bytes = subprocess.check_output(
+            ["git", "show", "origin/main:ignored_titles.json"], cwd=BASE_DIR, stderr=subprocess.DEVNULL
+        )
+        parsed_ign = json.loads(ign_bytes.decode("utf-8"))
+        if isinstance(parsed_ign, list):
+            remote_ignored.update(parsed_ign)
+    except Exception:
+        pass
+    return remote_items, remote_ignored
+
+
+def _align_head_if_data_only():
+    """Reset local main onto origin/main only if unpushed ahead commits touch only assignment data files."""
+    try:
+        ahead = subprocess.check_output(
+            ["git", "diff", "--name-only", "origin/main..HEAD"], cwd=BASE_DIR, text=True, stderr=subprocess.DEVNULL
+        ).strip()
+        ahead_files = {line.strip() for line in ahead.splitlines() if line.strip()}
+        data_only = {"assignments.json", "assignments.js", "ignored_titles.json"}
+        if ahead_files and ahead_files.issubset(data_only):
+            subprocess.run(["git", "reset", "--mixed", "origin/main"], cwd=BASE_DIR, capture_output=True, timeout=10)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def load_and_sync_latest_assignments():
+    """Pre-scan sync: merge remote GitHub assignments/ignores, align git branch, and run sync_letus.fetch_and_sync()."""
+    local_items = load_assignments()
+    try:
+        remote_items, remote_ignored = _fetch_origin_assignments_and_ignored()
+        if remote_items:
+            merged = _merge_assignments(local_items, remote_items)
+            if remote_ignored:
+                merged = [
+                    a for a in merged
+                    if a.get("title") not in remote_ignored and a.get("moodleUid") not in remote_ignored
+                ]
+                ign_path = os.path.join(BASE_DIR, "ignored_titles.json")
+                try:
+                    cur_ign = []
+                    if os.path.exists(ign_path):
+                        with open(ign_path, "r", encoding="utf-8") as f:
+                            cur_ign = json.load(f)
+                    all_ign = list(dict.fromkeys(list(cur_ign) + list(remote_ignored)))
+                    with open(ign_path, "w", encoding="utf-8") as f:
+                        json.dump(all_ign, f, ensure_ascii=False, indent=2)
+                except Exception:
+                    pass
+            _align_head_if_data_only()
+            save_assignments(merged)
+    except Exception as e:
+        print(f"  [Pre-Scan Git Merge Info] リモート統合スキップ ({e})")
+
+    try:
+        import sync_letus
+        sync_letus.fetch_and_sync()
+    except Exception as e:
+        print(f"  [Pre-Scan ICS Sync Info] カレンダー同期スキップ ({e})")
+
+    return load_assignments()
+
+
+def sync_to_cloud(task_id, status=None, title="", letus_url=None, letus_submitted=None):
+    """Render APIにステータスやletusUrl・letusSubmittedの変更を即座にPOST通知"""
     try:
         data = {"id": task_id, "title": title}
         if status:
             data["status"] = status
         if letus_url:
             data["letusUrl"] = letus_url
+        if letus_submitted is not None:
+            data["letusSubmitted"] = letus_submitted
         payload = json.dumps(data).encode("utf-8")
         req = urllib.request.Request(
             CLOUD_API_URL,
@@ -106,22 +236,59 @@ def sync_to_cloud(task_id, status=None, title="", letus_url=None):
         print(f"  [Cloud Sync Info] クラウドAPI同期スキップ ({e})")
         return False
 
+
 def sync_to_git(summary_msg):
-    """変更があれば自動でgit commit & push"""
+    """origin/main の最新データと統合した上で競合なく git commit & push"""
     try:
+        current_local = load_assignments()
+        remote_items, remote_ignored = _fetch_origin_assignments_and_ignored()
+
+        if remote_items:
+            merged = _merge_assignments(current_local, remote_items)
+            # Local scan results for letusUrl and letusSubmitted win on matching items
+            local_by_id = {str(a.get("id")): a for a in current_local if a.get("id")}
+            for item in merged:
+                loc = local_by_id.get(str(item.get("id")))
+                if loc:
+                    if loc.get("letusUrl"):
+                        item["letusUrl"] = loc["letusUrl"]
+                    if "letusSubmitted" in loc:
+                        item["letusSubmitted"] = loc["letusSubmitted"]
+            if remote_ignored:
+                merged = [
+                    a for a in merged
+                    if a.get("title") not in remote_ignored and a.get("moodleUid") not in remote_ignored
+                ]
+        else:
+            merged = current_local
+
+        aligned = _align_head_if_data_only()
+        if not aligned and remote_items:
+            # Check if branch head has non-data unpushed commits vs origin/main
+            ahead = subprocess.check_output(
+                ["git", "diff", "--name-only", "origin/main..HEAD"], cwd=BASE_DIR, text=True, stderr=subprocess.DEVNULL
+            ).strip()
+            if not ahead:
+                # Branch head is behind origin/main (fast-forwardable)
+                subprocess.run(["git", "merge", "--ff-only", "origin/main"], cwd=BASE_DIR, capture_output=True, timeout=10)
+
+        save_assignments(merged)
         subprocess.run(["git", "add", "assignments.json", "assignments.js"], cwd=BASE_DIR, capture_output=True, timeout=10)
+        commit_msg = f"auto: {summary_msg} [skip render]"
         commit_res = subprocess.run(
-            ["git", "commit", "-m", f"auto: {summary_msg}"],
+            ["git", "commit", "-m", commit_msg],
             cwd=BASE_DIR,
             capture_output=True,
             text=True,
             timeout=10
         )
         if "nothing to commit" not in commit_res.stdout.lower() and commit_res.returncode == 0:
-            print(f"  [Git] コミット作成: auto: {summary_msg}")
+            print(f"  [Git] コミット作成: {commit_msg}")
             push_res = subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, capture_output=True, text=True, timeout=25)
             if push_res.returncode == 0:
                 print("  [Git] GitHubへのプッシュ完了")
+            else:
+                print(f"  [Git Push Warning] {push_res.stderr.strip()}")
     except Exception as e:
         print(f"  [Git Sync Info] Gitプッシュスキップ ({e})")
 
@@ -180,7 +347,7 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
             print("処理を終了します (スマート終了)。")
             return
 
-    assignments = load_assignments()
+    assignments = load_and_sync_latest_assignments()
     if not assignments:
         print("課題データが存在しません。")
         return
@@ -587,21 +754,27 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
         if updated_promoted:
             print(f"  ・提出済みに昇格: {len(updated_promoted)} 件")
             for t in updated_promoted:
-                sync_to_cloud(t["id"], status="submitted", title=t.get("title", ""), letus_url=t.get("letusUrl"))
+                sync_to_cloud(t["id"], status="submitted", title=t.get("title", ""), letus_url=t.get("letusUrl"), letus_submitted=t.get("letusSubmitted"))
         if updated_reverted:
             print(f"  ・未完了に自動復元: {len(updated_reverted)} 件")
             for t in updated_reverted:
                 sync_to_cloud(t["id"], status="not_started", title=t.get("title", ""))
         if urls_updated:
-            print(f"  ・LETUS固有URLを記録: {len(urls_updated)} 件")
+            print(f"  ・LETUS固有URL・提出状況を確認記録: {len(urls_updated)} 件")
             for t in urls_updated:
                 if t not in updated_promoted:
-                    sync_to_cloud(t["id"], title=t.get("title", ""), letus_url=t.get("letusUrl"))
+                    sync_to_cloud(t["id"], title=t.get("title", ""), letus_url=t.get("letusUrl"), letus_submitted=t.get("letusSubmitted"))
 
         summary = f"letus sync: {len(updated_promoted)} promoted, {len(updated_reverted)} reverted, {len(urls_updated)} URLs saved"
         sync_to_git(summary)
     else:
         print("\nステータスの変更はありませんでした（すべて整合しています）。")
+        try:
+            st = subprocess.run(["git", "status", "--porcelain", "assignments.json"], cwd=BASE_DIR, capture_output=True, text=True)
+            if st.stdout.strip():
+                sync_to_git("letus sync: reconcile local & remote data")
+        except Exception:
+            pass
 
     if morning_check_only:
         record_morning_scan_done()

@@ -387,7 +387,7 @@ def fetch_and_sync():
             status = subprocess.run(["git", "status", "--porcelain"] + files, cwd=BASE_DIR, capture_output=True, text=True)
             if any(f in status.stdout for f in files):
                 subprocess.run(["git", "add"] + files, cwd=BASE_DIR, check=True, capture_output=True)
-                msg = f"Auto-sync LETUS assignments (New: {len(new_items)}, Updated: {updated_count}) [skip render] [skip ci]"
+                msg = f"Auto-sync LETUS assignments (New: {len(new_items)}, Updated: {updated_count}) [skip render]"
                 subprocess.run(["git", "commit", "-m", msg], cwd=BASE_DIR, check=True, capture_output=True)
                 subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, check=True, capture_output=True)
                 print("🚀 GitHubへ自動プッシュしました！")

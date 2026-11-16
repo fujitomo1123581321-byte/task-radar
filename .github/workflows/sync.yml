@@ -58,7 +58,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes in assignments data."
           else
-            git commit -m "Auto-sync LETUS assignments [skip ci]"
+            git commit -m "Auto-sync LETUS assignments [skip render]"
             for i in {1..5}; do
               git pull --rebase -X theirs origin main || git rebase --abort || true
               git push origin main && break || {

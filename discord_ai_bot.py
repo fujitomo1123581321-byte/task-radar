@@ -235,6 +235,12 @@ def smart_merge_assignments(local: list, remote: list) -> list:
                 item["folderPath"] = loc["folderPath"]
             if loc.get("memo") and not rem.get("memo"):
                 item["memo"] = loc["memo"]
+            if loc.get("letusUrl") and not rem.get("letusUrl"):
+                item["letusUrl"] = loc["letusUrl"]
+            if loc.get("letusSubmitted") and not rem.get("letusSubmitted"):
+                item["letusSubmitted"] = True
+            elif "letusSubmitted" in loc and "letusSubmitted" not in rem:
+                item["letusSubmitted"] = loc["letusSubmitted"]
 
             merged_ids.add(str(loc.get("id")))
 
@@ -330,9 +336,9 @@ def sync_to_github_via_api(path: str, content_bytes: bytes, commit_msg: str, tok
 def git_push_sync(commit_msg="Update assignments via Discord Bot"):
     """Dual-mode sync: GitHub API (Cloud) or Git Subprocess (Local)"""
     with DATA_LOCK:
-        # Avoid triggering cascading Render redeploy loops on data sync
+        # Avoid triggering cascading Render redeploy loops on data sync (keep GitHub Pages deploy active)
         if "[skip render]" not in commit_msg:
-            commit_msg = f"{commit_msg} [skip render] [skip ci]"
+            commit_msg = f"{commit_msg} [skip render]"
         # Always merge latest remote ignored titles before pushing
         load_ignored_titles(force_remote=True)
         gh_token = CONFIG.get("github_token") or os.environ.get("GITHUB_TOKEN")
