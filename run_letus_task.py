@@ -43,15 +43,24 @@ def main():
     else:
         mode_args = sys.argv[1:]
 
-    # Resolve python interpreter
+    # Use python.exe with CREATE_NO_WINDOW so child CUI processes (Playwright node.exe, git.exe)
+    # inherit a hidden console and never flash black console windows on the user's desktop.
     python_exe = sys.executable
+    if python_exe.lower().endswith("pythonw.exe"):
+        candidate = python_exe[:-11] + "python.exe"
+        if os.path.exists(candidate):
+            python_exe = candidate
     cmd = [python_exe, script_path] + mode_args
     log(f"Launching script: {' '.join(cmd)}")
 
     try:
         creationflags = 0
+        startupinfo = None
         if sys.platform == "win32":
             creationflags = subprocess.CREATE_NO_WINDOW
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 0
 
         res = subprocess.run(
             cmd,
@@ -61,6 +70,7 @@ def main():
             encoding="utf-8",
             errors="replace",
             creationflags=creationflags,
+            startupinfo=startupinfo,
             timeout=300
         )
         log(f"Finished with exit code {res.returncode}")

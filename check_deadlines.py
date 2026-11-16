@@ -96,7 +96,7 @@ def notify_windows(title, message):
         $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
         [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('課題締切レーダー').Show($toast)
         """
-        subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, timeout=5)
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
     except Exception:
         pass
 

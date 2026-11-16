@@ -1,9 +1,9 @@
 Set WshShell = CreateObject("WScript.Shell")
 Set FSO = CreateObject("Scripting.FileSystemObject")
 scriptDir = FSO.GetParentFolderName(WScript.ScriptFullName)
-pyExe = WshShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Programs\Python\Python313\pythonw.exe"
+pyExe = WshShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Programs\Python\Python313\python.exe"
 If Not FSO.FileExists(pyExe) Then
-    pyExe = "pythonw"
+    pyExe = "python"
 End If
 cmd = """" & pyExe & """ """ & scriptDir & "\scan_letus_status.py"" --headless --morning-check-only"
 WshShell.Run cmd, 0, False

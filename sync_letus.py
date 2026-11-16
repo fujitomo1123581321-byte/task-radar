@@ -146,8 +146,7 @@ def notify_windows(title, message):
         $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
         [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('LETUS課題レーダー').Show($toast)
         """
-        import subprocess
-        subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, timeout=5)
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
     except Exception:
         pass
 
@@ -381,15 +380,16 @@ def fetch_and_sync():
     if new_items or updated_count > 0:
         try:
             import subprocess
+            flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
             files = ["assignments.json", "assignments.js"]
             if os.path.exists(IGNORED_PATH):
                 files.append("ignored_titles.json")
-            status = subprocess.run(["git", "status", "--porcelain"] + files, cwd=BASE_DIR, capture_output=True, text=True)
+            status = subprocess.run(["git", "status", "--porcelain"] + files, cwd=BASE_DIR, capture_output=True, text=True, creationflags=flags)
             if any(f in status.stdout for f in files):
-                subprocess.run(["git", "add"] + files, cwd=BASE_DIR, check=True, capture_output=True)
+                subprocess.run(["git", "add"] + files, cwd=BASE_DIR, check=True, capture_output=True, creationflags=flags)
                 msg = f"Auto-sync LETUS assignments (New: {len(new_items)}, Updated: {updated_count}) [skip render]"
-                subprocess.run(["git", "commit", "-m", msg], cwd=BASE_DIR, check=True, capture_output=True)
-                subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, check=True, capture_output=True)
+                subprocess.run(["git", "commit", "-m", msg], cwd=BASE_DIR, check=True, capture_output=True, creationflags=flags)
+                subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, check=True, capture_output=True, creationflags=flags)
                 print("🚀 GitHubへ自動プッシュしました！")
         except Exception:
             pass

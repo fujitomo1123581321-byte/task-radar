@@ -22,6 +22,7 @@ import crypto_vault
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JSON_PATH = os.path.join(BASE_DIR, "assignments.json")
 JS_PATH = os.path.join(BASE_DIR, "assignments.js")
+_SUBPROC_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 ACTIVE_COURSES = [
     {"name": "データサイエンス・ＡＩ応用基礎", "id": 206066},
     {"name": "プラズマ物理", "id": 206316},
@@ -76,7 +77,7 @@ def notify_windows(title, message):
         $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
         [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('LETUS課題提出チェッカー').Show($toast)
         """
-        subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, timeout=5)
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, timeout=5, creationflags=_SUBPROC_FLAGS)
     except Exception:
         pass
 
@@ -138,11 +139,11 @@ def _merge_assignments(local_items, remote_items):
 
 def _fetch_origin_assignments_and_ignored():
     """Fetch origin/main and decrypt remote assignments.json & ignored_titles.json without touching working tree."""
-    subprocess.run(["git", "fetch", "origin", "main"], cwd=BASE_DIR, capture_output=True, timeout=20)
+    subprocess.run(["git", "fetch", "origin", "main"], cwd=BASE_DIR, capture_output=True, timeout=20, creationflags=_SUBPROC_FLAGS)
     remote_items = []
     try:
         raw_bytes = subprocess.check_output(
-            ["git", "show", "origin/main:assignments.json"], cwd=BASE_DIR, stderr=subprocess.DEVNULL
+            ["git", "show", "origin/main:assignments.json"], cwd=BASE_DIR, stderr=subprocess.DEVNULL, creationflags=_SUBPROC_FLAGS
         )
         remote_items = crypto_vault.decrypt_json_data(raw_bytes.decode("utf-8"), default=[])
     except Exception:
@@ -151,7 +152,7 @@ def _fetch_origin_assignments_and_ignored():
     remote_ignored = set()
     try:
         ign_bytes = subprocess.check_output(
-            ["git", "show", "origin/main:ignored_titles.json"], cwd=BASE_DIR, stderr=subprocess.DEVNULL
+            ["git", "show", "origin/main:ignored_titles.json"], cwd=BASE_DIR, stderr=subprocess.DEVNULL, creationflags=_SUBPROC_FLAGS
         )
         parsed_ign = json.loads(ign_bytes.decode("utf-8"))
         if isinstance(parsed_ign, list):
@@ -165,12 +166,12 @@ def _align_head_if_data_only():
     """Reset local main onto origin/main only if unpushed ahead commits touch only assignment data files."""
     try:
         ahead = subprocess.check_output(
-            ["git", "diff", "--name-only", "origin/main..HEAD"], cwd=BASE_DIR, text=True, stderr=subprocess.DEVNULL
+            ["git", "diff", "--name-only", "origin/main..HEAD"], cwd=BASE_DIR, text=True, stderr=subprocess.DEVNULL, creationflags=_SUBPROC_FLAGS
         ).strip()
         ahead_files = {line.strip() for line in ahead.splitlines() if line.strip()}
         data_only = {"assignments.json", "assignments.js", "ignored_titles.json"}
         if ahead_files and ahead_files.issubset(data_only):
-            subprocess.run(["git", "reset", "--mixed", "origin/main"], cwd=BASE_DIR, capture_output=True, timeout=10)
+            subprocess.run(["git", "reset", "--mixed", "origin/main"], cwd=BASE_DIR, capture_output=True, timeout=10, creationflags=_SUBPROC_FLAGS)
             return True
     except Exception:
         pass
@@ -268,27 +269,28 @@ def sync_to_git(summary_msg):
             aligned = _align_head_if_data_only()
             if not aligned and remote_items:
                 ahead = subprocess.check_output(
-                    ["git", "diff", "--name-only", "origin/main..HEAD"], cwd=BASE_DIR, text=True, stderr=subprocess.DEVNULL
+                    ["git", "diff", "--name-only", "origin/main..HEAD"], cwd=BASE_DIR, text=True, stderr=subprocess.DEVNULL, creationflags=_SUBPROC_FLAGS
                 ).strip()
                 if not ahead:
-                    subprocess.run(["git", "reset", "--mixed", "origin/main"], cwd=BASE_DIR, capture_output=True, timeout=10)
+                    subprocess.run(["git", "reset", "--mixed", "origin/main"], cwd=BASE_DIR, capture_output=True, timeout=10, creationflags=_SUBPROC_FLAGS)
 
             save_assignments(merged)
-            subprocess.run(["git", "add", "assignments.json", "assignments.js"], cwd=BASE_DIR, capture_output=True, timeout=10)
+            subprocess.run(["git", "add", "assignments.json", "assignments.js"], cwd=BASE_DIR, capture_output=True, timeout=10, creationflags=_SUBPROC_FLAGS)
             commit_msg = f"auto: {summary_msg} [skip render]"
             commit_res = subprocess.run(
                 ["git", "commit", "-m", commit_msg],
                 cwd=BASE_DIR,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
+                creationflags=_SUBPROC_FLAGS
             )
             if "nothing to commit" in commit_res.stdout.lower() or commit_res.returncode != 0:
                 print("  [Git] 差分なしまたはコミット不要（同期完了）")
                 break
 
             print(f"  [Git] コミット作成: {commit_msg}")
-            push_res = subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, capture_output=True, text=True, timeout=25)
+            push_res = subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, capture_output=True, text=True, timeout=25, creationflags=_SUBPROC_FLAGS)
             if push_res.returncode == 0:
                 print("  [Git] GitHubへのプッシュ完了")
                 break
@@ -774,7 +776,7 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
     else:
         print("\nステータスの変更はありませんでした（すべて整合しています）。")
         try:
-            st = subprocess.run(["git", "status", "--porcelain", "assignments.json"], cwd=BASE_DIR, capture_output=True, text=True)
+            st = subprocess.run(["git", "status", "--porcelain", "assignments.json"], cwd=BASE_DIR, capture_output=True, text=True, creationflags=_SUBPROC_FLAGS)
             if st.stdout.strip():
                 sync_to_git("letus sync: reconcile local & remote data")
         except Exception:
