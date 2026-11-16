@@ -28,7 +28,7 @@ ACTIVE_COURSES = [
     {"name": "プラズマ物理", "id": 206316},
     {"name": "物理学実験３B組", "id": 204216},
     {"name": "素粒子・原子核物理学", "id": 206296},
-    {"name": "宇宙の物理学１", "id": 206297},
+    {"name": "宇宙の物理学１ 天体物理学１", "id": 206297},
     {"name": "物理数学演習２Ｂ", "id": 206300},
     {"name": "物理数学演習２Ａ", "id": 206299},
     {"name": "量子力学３", "id": 206309},
@@ -238,6 +238,41 @@ def sync_to_cloud(task_id, status=None, title="", letus_url=None, letus_submitte
         return False
 
 
+def sync_batch_to_cloud(items_list):
+    """Render APIに複数課題の変更を1回のPOSTバッチで一括送信"""
+    if not items_list:
+        return True
+    try:
+        batch_payload = []
+        seen_ids = set()
+        for item in items_list:
+            tid = item.get("id")
+            if not tid or str(tid) in seen_ids:
+                continue
+            seen_ids.add(str(tid))
+            entry = {"id": tid, "title": item.get("title", "")}
+            if item.get("status"):
+                entry["status"] = item["status"]
+            if item.get("letusUrl"):
+                entry["letusUrl"] = item["letusUrl"]
+            if "letusSubmitted" in item:
+                entry["letusSubmitted"] = item["letusSubmitted"]
+            batch_payload.append(entry)
+        if not batch_payload:
+            return True
+        payload = json.dumps({"items": batch_payload}).encode("utf-8")
+        req = urllib.request.Request(
+            CLOUD_API_URL,
+            data=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=15) as res:
+            return res.status == 200
+    except Exception as e:
+        print(f"  [Cloud Batch Sync Info] バッチ同期スキップ ({e})")
+        return False
+
+
 def sync_to_git(summary_msg):
     """origin/main の最新データと統合した上で競合なく git commit & push (リトライ付)"""
     try:
@@ -300,9 +335,9 @@ def sync_to_git(summary_msg):
 
 def is_morning_eligible(force=False):
     """
-    朝一番スマート判定:
-    - 午前中 (06:00〜12:00) かつ「本日未実行」の場合のみ True
-    - 昼以降や、今日すでに1回実行済みの場合は False
+    PC起動・初回ログイン時のスマート判定:
+    - 05:00〜19:59 かつ「本日未実行」の場合のみ True（昼以降のPC初回オープンにも対応）
+    - 20:00以降（夜定期便と重複するため）や、今日すでに1回実行済みの場合は False
     """
     if force:
         return True, "強制実行モード"
@@ -310,9 +345,9 @@ def is_morning_eligible(force=False):
     now = datetime.now()
     today_str = now.strftime("%Y-%m-%d")
 
-    # 1. 時間帯チェック (06:00 - 12:00)
-    if not (6 <= now.hour < 12):
-        return False, f"現在時刻({now.strftime('%H:%M')})は午前中(06:00〜12:00)ではないためスキップします。"
+    # 1. 時間帯チェック (05:00 - 19:59)
+    if not (5 <= now.hour < 20):
+        return False, f"現在時刻({now.strftime('%H:%M')})は日中初回点検ウィンドウ(05:00〜19:59)外のためスキップします。"
 
     # 2. 本日実行済みチェック
     if os.path.exists(LAST_MORNING_SCAN_PATH):
@@ -320,11 +355,11 @@ def is_morning_eligible(force=False):
             with open(LAST_MORNING_SCAN_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if data.get("last_date") == today_str:
-                    return False, f"本日({today_str})朝のスキャンは既に完了しているためスキップします (今日2回目の起動)。"
+                    return False, f"本日({today_str})の初回ログインスキャンは既に完了しているためスキップします (今日2回目の起動)。"
         except Exception:
             pass
 
-    return True, "朝の初回スキャンを実行します。"
+    return True, "本日初回PCオープンの自動スキャンを実行します。"
 
 def record_morning_scan_done():
     """本日朝のスキャン完了日を記録"""
@@ -425,57 +460,75 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
 
         page = context.new_page()
 
-        # Step 1: Open upcoming events calendar
+        # Step 1: Open upcoming events calendar (pump Playwright event loop during SAML/OAuth redirects)
         print("\n[ステップ 1] LETUSの今後のイベント画面を開いています...")
         try:
             page.goto("https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming", wait_until="commit", timeout=30000)
+            for _ in range(15):
+                if page.url.startswith("https://letus.ed.tus.ac.jp/") and "calendar" in page.url:
+                    break
+                page.wait_for_timeout(1000)
             try:
-                page.wait_for_url("**/calendar/view.php*", timeout=20000)
+                page.wait_for_load_state("domcontentloaded", timeout=10000)
             except Exception:
                 pass
-            page.wait_for_load_state("domcontentloaded")
-            time.sleep(2)
+            page.wait_for_timeout(1500)
         except Exception as e:
             print(f"カレンダー接続エラー: {e}")
             context.close()
             return
 
         # Check if login is needed (Redirected away from letus.ed.tus.ac.jp/calendar)
-        is_calendar = "letus.ed.tus.ac.jp" in page.url and "calendar" in page.url
+        is_calendar = page.url.startswith("https://letus.ed.tus.ac.jp/") and "calendar" in page.url
 
         if not is_calendar:
             print(f"\n⚠️ 【LETUSのログインが必要です】(現在URL: {page.url})")
             if headless:
-                print("headlessモードのため、ログイン画面を表示できません。スキップします。")
-                notify_windows("⚠️ LETUSログインが必要です", "実提出チェックのため、check_letus_submissions.bat から一度ログインしてください。")
-                context.close()
-                return
-            else:
-                print("ブラウザ画面で理科大アカウントにログインしてください。")
-                print("ログイン完了を待機しています (最大180秒)...")
+                print("Windows Hello / SSO再認証のためブラウザ画面を自動で開きます...")
+                notify_windows("🔐 LETUSログインが必要です", "ブラウザが開きます。ログインすると今回の点検から自動再開します。")
                 try:
-                    logged_in = False
-                    start_t = time.time()
-                    while time.time() - start_t < 180:
-                        cur_url = page.url
-                        if "letus.ed.tus.ac.jp" in cur_url and "idp.admin.tus.ac.jp" not in cur_url and "saml" not in cur_url.lower():
-                            logged_in = True
-                            break
-                        time.sleep(1)
-
-                    if not logged_in:
-                        print("タイムアウトしました。処理を中断します。")
-                        context.close()
-                        return
-
-                    print("✅ ログインが確認できました！セッションを保持しました。")
-                    if "calendar" not in page.url:
-                        page.goto("https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming", wait_until="domcontentloaded", timeout=20000)
-                    time.sleep(2)
+                    context.close()
+                except Exception:
+                    pass
+                try:
+                    context = p.chromium.launch_persistent_context(
+                        user_data_dir=BROWSER_PROFILE_DIR,
+                        channel="msedge",
+                        headless=False,
+                        viewport={"width": 1280, "height": 800},
+                        args=["--disable-blink-features=AutomationControlled"]
+                    )
+                    page = context.new_page()
+                    page.goto("https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming", wait_until="commit", timeout=30000)
                 except Exception as e:
-                    print(f"ログイン待機エラー: {e}")
+                    print(f"ログイン用ブラウザ起動エラー: {e}")
+                    return
+
+            print("ブラウザ画面で理科大アカウントにログインしてください。")
+            print("ログイン完了を待機しています (最大180秒)...")
+            try:
+                logged_in = False
+                start_t = time.time()
+                while time.time() - start_t < 180:
+                    cur_url = page.url
+                    if cur_url.startswith("https://letus.ed.tus.ac.jp/") and "idp.admin.tus.ac.jp" not in cur_url and "saml" not in cur_url.lower() and "login.microsoft" not in cur_url.lower():
+                        logged_in = True
+                        break
+                    page.wait_for_timeout(1000)
+
+                if not logged_in:
+                    print("タイムアウトしました。処理を中断します。")
                     context.close()
                     return
+
+                print("✅ ログインが確認できました！セッションを保持しました。")
+                if "calendar" not in page.url:
+                    page.goto("https://letus.ed.tus.ac.jp/calendar/view.php?view=upcoming", wait_until="domcontentloaded", timeout=20000)
+                page.wait_for_timeout(2000)
+            except Exception as e:
+                print(f"ログイン待機エラー: {e}")
+                context.close()
+                return
 
         # Step 2: Extract event links from calendar page
         print("[ステップ 2] 画面内の課題リンクを収集しています (READ-ONLY)...")
@@ -488,7 +541,7 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                     const cards = document.querySelectorAll('.event, [data-event-id], .calendar_event_course, .card');
                     cards.forEach(card => {
                         const titleEl = card.querySelector('.name, h3, .card-title');
-                        const linkEl = card.querySelector('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"], a[href*="/mod/feedback/view.php"], a[href*="/mod/questionnaire/view.php"], a[href*="/mod/forum/view.php"]');
+                        const linkEl = card.querySelector('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"], a[href*="/mod/feedback/view.php"], a[href*="/mod/questionnaire/view.php"], a[href*="/mod/forum/view.php"], a[href*="/mod/choice/view.php"], a[href*="/mod/survey/view.php"]');
                         const courseEl = card.querySelector('.course, .text-muted, a[href*="/course/view.php"]');
                         if (linkEl) {
                             const title = titleEl ? titleEl.innerText.trim() : linkEl.innerText.trim();
@@ -501,7 +554,7 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                         }
                     });
                     if (results.length === 0) {
-                        const links = document.querySelectorAll('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"], a[href*="/mod/feedback/view.php"], a[href*="/mod/questionnaire/view.php"], a[href*="/mod/forum/view.php"]');
+                        const links = document.querySelectorAll('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"], a[href*="/mod/feedback/view.php"], a[href*="/mod/questionnaire/view.php"], a[href*="/mod/forum/view.php"], a[href*="/mod/choice/view.php"], a[href*="/mod/survey/view.php"]');
                         links.forEach(a => {
                             const title = a.innerText.trim();
                             const rawHref = a.href || '';
@@ -516,7 +569,7 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                 break
             except Exception as e:
                 print(f"  イベント収集リトライ ({attempt+1}/3): {e}")
-                time.sleep(2)
+                page.wait_for_timeout(2000)
 
         print(f"  検出された課題リンク: {len(event_links)} 件")
 
@@ -623,10 +676,10 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                     try:
                         print(f"  カレンダー未掲載のためコースから探索中: 【{matched_course['name']}】({course_url})")
                         page.goto(course_url, wait_until="domcontentloaded", timeout=20000)
-                        time.sleep(1.0)
+                        page.wait_for_timeout(1000)
                         course_links = page.evaluate("""() => {
                             const res = [];
-                            document.querySelectorAll('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"], a[href*="/mod/feedback/view.php"], a[href*="/mod/questionnaire/view.php"], a[href*="/mod/forum/view.php"]').forEach(a => {
+                            document.querySelectorAll('a[href*="/mod/assign/view.php"], a[href*="/mod/quiz/view.php"], a[href*="/mod/feedback/view.php"], a[href*="/mod/questionnaire/view.php"], a[href*="/mod/forum/view.php"], a[href*="/mod/choice/view.php"], a[href*="/mod/survey/view.php"]').forEach(a => {
                                 const title = a.innerText.trim();
                                 const rawHref = a.href || '';
                                 const href = rawHref.replace(/([?&])action=editsubmission(&|$)/, '$1').replace(/[?&]$/, '');
@@ -666,7 +719,7 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
             print(f"  確認中: 【{subject}】{title}")
             try:
                 page.goto(target_url, wait_until="domcontentloaded", timeout=20000)
-                time.sleep(1.2)
+                page.wait_for_timeout(1200)
                 status_info = page.evaluate(check_submission_js)
 
                 if status_info.get("isSubmitted"):
@@ -734,7 +787,7 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
             print(f"  点検中: 【{subject}】{title}")
             try:
                 page.goto(target_url, wait_until="domcontentloaded", timeout=20000)
-                time.sleep(1.2)
+                page.wait_for_timeout(1200)
                 status_info = page.evaluate(check_submission_js)
 
                 if status_info.get("hasUnsubmittedText") and not status_info.get("isSubmitted"):
@@ -749,7 +802,7 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
                 print(f"    点検スキップ: {e}")
 
         print("\nブラウザを終了しています...")
-        time.sleep(1)
+        page.wait_for_timeout(1000)
         context.close()
 
     # Step 5: Save & Sync
@@ -759,25 +812,27 @@ def scan_letus_submissions(headless=False, morning_check_only=False, force=False
         print(f"\n🎉 合計 {total_changes} 件の変更を反映しました！")
         if updated_promoted:
             print(f"  ・提出済みに昇格: {len(updated_promoted)} 件")
-            for t in updated_promoted:
-                sync_to_cloud(t["id"], status="submitted", title=t.get("title", ""), letus_url=t.get("letusUrl"), letus_submitted=t.get("letusSubmitted"))
         if updated_reverted:
             print(f"  ・未完了に自動復元: {len(updated_reverted)} 件")
-            for t in updated_reverted:
-                sync_to_cloud(t["id"], status="not_started", title=t.get("title", ""))
         if urls_updated:
             print(f"  ・LETUS固有URL・提出状況を確認記録: {len(urls_updated)} 件")
-            for t in urls_updated:
-                if t not in updated_promoted:
-                    sync_to_cloud(t["id"], title=t.get("title", ""), letus_url=t.get("letusUrl"), letus_submitted=t.get("letusSubmitted"))
+
+        batch_items = updated_promoted + updated_reverted + urls_updated
+        sync_batch_to_cloud(batch_items)
 
         summary = f"letus sync: {len(updated_promoted)} promoted, {len(updated_reverted)} reverted, {len(urls_updated)} URLs saved"
         sync_to_git(summary)
     else:
         print("\nステータスの変更はありませんでした（すべて整合しています）。")
+        # Sync all academic tasks carrying letusUrl or letusSubmitted to cloud/git if working tree has reconciled diffs
         try:
             st = subprocess.run(["git", "status", "--porcelain", "assignments.json"], cwd=BASE_DIR, capture_output=True, text=True, creationflags=_SUBPROC_FLAGS)
             if st.stdout.strip():
+                academic_synced = [
+                    a for a in assignments
+                    if a.get("category") == "academic" and (a.get("letusUrl") or "letusSubmitted" in a)
+                ]
+                sync_batch_to_cloud(academic_synced)
                 sync_to_git("letus sync: reconcile local & remote data")
         except Exception:
             pass

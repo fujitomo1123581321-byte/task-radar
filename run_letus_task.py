@@ -62,6 +62,9 @@ def main():
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = 0
 
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+
         res = subprocess.run(
             cmd,
             cwd=workspace_dir,
@@ -69,10 +72,20 @@ def main():
             text=True,
             encoding="utf-8",
             errors="replace",
+            env=env,
             creationflags=creationflags,
             startupinfo=startupinfo,
             timeout=300
         )
+        if res.stdout:
+            summary_keys = (
+                "未提出の学業課題", "検出された課題リンク", "🟢", "✨",
+                "🎉", "⚠️", "[Git", "スキップ", "スキャン完了", "タイムアウト", "Windows Hello"
+            )
+            for line in res.stdout.splitlines():
+                clean = line.strip()
+                if any(k in clean for k in summary_keys):
+                    log(f"  {clean}")
         log(f"Finished with exit code {res.returncode}")
         if res.returncode != 0 and res.stderr:
             log(f"Stderr: {res.stderr.strip()[:500]}")
