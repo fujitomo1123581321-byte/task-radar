@@ -48,12 +48,13 @@ jobs:
       - name: Check Deadlines & Send Discord Notification
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          LETUS_CALENDAR_URL: ${{ secrets.LETUS_CALENDAR_URL }}
         run: |
           python check_deadlines.py
 
       - name: Commit and push if assignments changed
         run: |
-          git add assignments.json assignments.js ignored_titles.json
+          git add assignments.json assignments.js ignored_titles.json auth_vault.json
           if git diff --staged --quiet; then
             echo "No changes in assignments data."
           else

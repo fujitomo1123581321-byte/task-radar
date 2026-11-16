@@ -32,6 +32,7 @@ import http.server
 import discord
 from discord.ext import commands
 from aiohttp import web
+import crypto_vault
 
 # -------------------------------------------------------------
 # Configuration & Paths (Local + Cloud Support)
@@ -41,6 +42,7 @@ CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 JSON_PATH = os.path.join(BASE_DIR, "assignments.json")
 JS_PATH = os.path.join(BASE_DIR, "assignments.js")
 IGNORED_PATH = os.path.join(BASE_DIR, "ignored_titles.json")
+VAULT_PATH = os.path.join(BASE_DIR, "auth_vault.json")
 
 JST = timezone(timedelta(hours=9))
 
@@ -177,7 +179,7 @@ def fetch_remote_assignments():
             with urllib.request.urlopen(req, timeout=5) as res:
                 data = json.loads(res.read().decode("utf-8"))
                 content = base64.b64decode(data.get("content", "")).decode("utf-8")
-                return json.loads(content)
+                return crypto_vault.decrypt_json_data(content, default=[])
         except Exception as e:
             print(f"[Remote Fetch API Notice] {e}")
 
@@ -185,7 +187,7 @@ def fetch_remote_assignments():
         url = f"https://raw.githubusercontent.com/fujitomo1123581321-byte/task-radar/main/assignments.json?_={int(time.time())}"
         req = urllib.request.Request(url, headers={"User-Agent": "TaskRadarBot", "Cache-Control": "no-cache"})
         with urllib.request.urlopen(req, timeout=5) as res:
-            return json.loads(res.read().decode("utf-8"))
+            return crypto_vault.decrypt_json_data(res.read().decode("utf-8"), default=[])
     except Exception as e:
         print(f"[Remote Fetch Fallback Notice] {e}")
         return []
@@ -250,13 +252,7 @@ def load_assignments(force_remote: bool = False):
     global _last_remote_sync_time
     with DATA_LOCK:
         now = time.time()
-        local = []
-        if os.path.exists(JSON_PATH):
-            try:
-                with open(JSON_PATH, "r", encoding="utf-8") as f:
-                    local = json.load(f)
-            except Exception:
-                local = []
+        local = crypto_vault.load_assignments_file(JSON_PATH)
 
         should_fetch_remote = force_remote or not local or (now - _last_remote_sync_time > REMOTE_SYNC_TTL)
 
@@ -277,10 +273,7 @@ def load_assignments(force_remote: bool = False):
         return merged
 
 def _raw_save_assignments(items):
-    with open(JSON_PATH, "w", encoding="utf-8") as f:
-        json.dump(items, f, ensure_ascii=False, indent=2)
-    with open(JS_PATH, "w", encoding="utf-8") as f:
-        f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(items, ensure_ascii=False, indent=2) + ";\n")
+    crypto_vault.save_assignments_files(items, JSON_PATH, JS_PATH)
 
 def save_assignments(items):
     with DATA_LOCK:
@@ -361,6 +354,12 @@ def git_push_sync(commit_msg="Update assignments via Discord Bot"):
                     time.sleep(0.5)
                     sync_to_github_via_api("ignored_titles.json", ign_bytes, commit_msg, gh_token)
 
+                if os.path.exists(VAULT_PATH):
+                    with open(VAULT_PATH, "rb") as f:
+                        vault_bytes = f.read()
+                    time.sleep(0.5)
+                    sync_to_github_via_api("auth_vault.json", vault_bytes, commit_msg, gh_token)
+
                 print(f"[Cloud Git Sync] Pushed to GitHub via API: {commit_msg}")
                 return True
             except Exception as e:
@@ -370,6 +369,8 @@ def git_push_sync(commit_msg="Update assignments via Discord Bot"):
             files = ["assignments.json", "assignments.js"]
             if os.path.exists(IGNORED_PATH):
                 files.append("ignored_titles.json")
+            if os.path.exists(VAULT_PATH):
+                files.append("auth_vault.json")
             subprocess.run(["git", "add"] + files, cwd=BASE_DIR, check=True, capture_output=True)
             status = subprocess.run(["git", "status", "--porcelain"] + files, cwd=BASE_DIR, capture_output=True, text=True)
             if any(f in status.stdout for f in files):
@@ -1270,13 +1271,26 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
         if normalized_path in ("/api/assignments", "/assignments.json"):
             with DATA_LOCK:
                 assignments = load_assignments()
-                resp = json.dumps(assignments, ensure_ascii=False).encode("utf-8")
+                enc_payload = crypto_vault.encrypt_json_data(assignments)
+                resp = json.dumps(enc_payload, ensure_ascii=False).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(resp)))
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.send_header("Pragma", "no-cache")
             self.send_header("Expires", "0")
+            self._send_cors()
+            self.end_headers()
+            self.wfile.write(resp)
+            return
+
+        if normalized_path in ("/api/vault", "/auth_vault.json"):
+            vault_obj = crypto_vault.load_vault()
+            resp = json.dumps(vault_obj, ensure_ascii=False).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(resp)))
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self._send_cors()
             self.end_headers()
             self.wfile.write(resp)
@@ -1644,6 +1658,45 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
                         self._send_cors()
                         self.end_headers()
                         self.wfile.write(b'{"error": "Task not found"}')
+            except Exception as e:
+                self.send_response(500)
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+        elif self.path in ("/api/update-vault", "/api/update-vault/"):
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len)
+                payload = json.loads(body.decode("utf-8"))
+
+                with DATA_LOCK:
+                    current_vault = crypto_vault.load_vault()
+                    if not current_vault or payload.get("key_id") != current_vault.get("key_id") or not payload.get("user_wrapped_key"):
+                        self.send_response(400)
+                        self._send_cors()
+                        self.end_headers()
+                        self.wfile.write(b'{"error": "Invalid key_id or missing user_wrapped_key"}')
+                        return
+
+                    if payload.get("user_salt"):
+                        current_vault["user_salt"] = payload["user_salt"]
+                    if payload.get("user_iterations"):
+                        current_vault["user_iterations"] = payload["user_iterations"]
+                    current_vault["user_wrapped_key"] = payload["user_wrapped_key"]
+                    crypto_vault.save_vault(current_vault)
+
+                    save_assignments(load_assignments())
+                    schedule_git_push("Update passcode vault via Web", delay=2.0)
+
+                resp = json.dumps({"status": "ok"}).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(resp)))
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(resp)
+                print("🔐 [Web Sync API] Passcode vault updated via Web")
             except Exception as e:
                 self.send_response(500)
                 self._send_cors()

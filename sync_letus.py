@@ -12,6 +12,7 @@ import re
 import urllib.request
 import urllib.error
 from datetime import datetime, timedelta, timezone
+import crypto_vault
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
@@ -233,14 +234,8 @@ def fetch_and_sync():
         print(f"取得エラー: {e}")
         return
 
-    # Load existing assignments
-    existing = []
-    if os.path.exists(JSON_PATH):
-        try:
-            with open(JSON_PATH, "r", encoding="utf-8") as f:
-                existing = json.load(f)
-        except Exception:
-            existing = []
+    # Load existing assignments (supports encrypted or plaintext)
+    existing = crypto_vault.load_assignments_file(JSON_PATH)
 
     # RFC 5545 Unfolding: merge multi-line folded fields
     ics_text = re.sub(r"\r?\n[ \t]", "", ics_text)
@@ -369,13 +364,8 @@ def fetch_and_sync():
         existing.extend(new_items)
 
     # Clean up duplicate old sample placeholders if we now have real LETUS items
-    # Save assignments.json
-    with open(JSON_PATH, "w", encoding="utf-8") as f:
-        json.dump(existing, f, ensure_ascii=False, indent=2)
-
-    # Save assignments.js
-    with open(JS_PATH, "w", encoding="utf-8") as f:
-        f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(existing, ensure_ascii=False, indent=2) + ";\n")
+    # Save encrypted assignments.json & assignments.js
+    crypto_vault.save_assignments_files(existing, JSON_PATH, JS_PATH)
 
     print(f"\n同期完了: 新着 {len(new_items)} 件, 更新 {updated_count} 件")
     

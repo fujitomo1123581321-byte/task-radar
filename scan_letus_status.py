@@ -17,6 +17,7 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timedelta, timezone
 from playwright.sync_api import sync_playwright
+import crypto_vault
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JSON_PATH = os.path.join(BASE_DIR, "assignments.json")
@@ -80,19 +81,10 @@ def notify_windows(title, message):
         pass
 
 def load_assignments():
-    if os.path.exists(JSON_PATH):
-        try:
-            with open(JSON_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return []
+    return crypto_vault.load_assignments_file(JSON_PATH)
 
 def save_assignments(assignments):
-    with open(JSON_PATH, "w", encoding="utf-8") as f:
-        json.dump(assignments, f, ensure_ascii=False, indent=2)
-    with open(JS_PATH, "w", encoding="utf-8") as f:
-        f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(assignments, ensure_ascii=False, indent=2) + ";\n")
+    crypto_vault.save_assignments_files(assignments, JSON_PATH, JS_PATH)
 
 def sync_to_cloud(task_id, status=None, title="", letus_url=None):
     """Render APIにステータスやletusUrlの変更を即座にPOST通知"""

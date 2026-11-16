@@ -12,6 +12,7 @@ import json
 import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
+import crypto_vault
 
 # Fix Windows console encoding for Japanese and emoji
 if sys.platform == 'win32':
@@ -38,13 +39,7 @@ def load_data():
     if os.environ.get("DISCORD_WEBHOOK_URL"):
         config["discord_webhook_url"] = os.environ.get("DISCORD_WEBHOOK_URL").strip()
 
-    local = []
-    if os.path.exists(JSON_PATH):
-        try:
-            with open(JSON_PATH, "r", encoding="utf-8") as f:
-                local = json.load(f)
-        except Exception:
-            local = []
+    local = crypto_vault.load_assignments_file(JSON_PATH)
 
     # 1. スマホやWebで行われた「完了」操作を確実に反映するため、通知前にクラウドから最新状態を取得
     cloud_endpoints = [
@@ -57,7 +52,7 @@ def load_data():
             req = urllib.request.Request(url, headers={"User-Agent": "TaskRadarDeadlineChecker/1.0", "Cache-Control": "no-cache"})
             with urllib.request.urlopen(req, timeout=5) as res:
                 if res.status == 200:
-                    remote_data = json.loads(res.read().decode("utf-8"))
+                    remote_data = crypto_vault.decrypt_json_data(res.read().decode("utf-8"), default=[])
                     if isinstance(remote_data, list) and len(remote_data) > 0:
                         remote = remote_data
                         break
@@ -79,11 +74,8 @@ def load_data():
     # PCローカルのファイルも最新状態に自動更新（ズレ防止）
     if assignments:
         try:
-            with open(JSON_PATH, "w", encoding="utf-8") as f:
-                json.dump(assignments, f, ensure_ascii=False, indent=2)
             js_path = os.path.join(BASE_DIR, "assignments.js")
-            with open(js_path, "w", encoding="utf-8") as f:
-                f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(assignments, ensure_ascii=False, indent=2) + ";\n")
+            crypto_vault.save_assignments_files(assignments, JSON_PATH, js_path)
         except Exception:
             pass
 

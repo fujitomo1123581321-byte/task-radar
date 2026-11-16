@@ -1,0 +1,27 @@
+{
+  "v": 1,
+  "key_id": "7cd6e5c5cd56ab0f",
+  "user_salt": "IChpcZUHo1mwXN0wybGUSw==",
+  "user_iterations": 10000,
+  "user_wrapped_key": {
+    "encrypted": true,
+    "v": 1,
+    "iv": "w9UVWjsDJcnMMU2D1lOklw==",
+    "ct": "iSI7mZrKRj9ziFOCy46JWhpwB85nj2X/pwUGzw+FNVw=",
+    "tag": "zCYHxX69Z0WrXUojUZYPg7wB2pq5knnQDtommci/+tg="
+  },
+  "server_wrapped_key": {
+    "encrypted": true,
+    "v": 1,
+    "iv": "qrgL5rsYI4hENK5mLd63ng==",
+    "ct": "mPqWs6GSfKZOKnVNURhNK2E6WFLkZ4gyfze1iuSQMhs=",
+    "tag": "naqxn0HZFC6z2orrXmR69ioUtnBk/7dl00iykcWaPws="
+  },
+  "webhook_wrapped_key": {
+    "encrypted": true,
+    "v": 1,
+    "iv": "JKVdpHSGD4cRUc1iPWjUwA==",
+    "ct": "UuvzLd2p1tT/CY7R5jz0CVVGuHMDV9rokiIljr++Ks0=",
+    "tag": "QktqUhibJYzBWvcgChSNgNeEpKhkFGffM4GZI4S2VkY="
+  }
+}

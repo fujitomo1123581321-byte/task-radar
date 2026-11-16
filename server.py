@@ -9,6 +9,7 @@ import os
 import sys
 import webbrowser
 import socket
+import crypto_vault
 
 # Ensure utf-8 output on Windows console
 if sys.platform == "win32":
@@ -79,18 +80,10 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                 content_length = 0
             body = self.rfile.read(content_length).decode("utf-8")
             try:
-                data = json.loads(body)
-                # Atomic Save JSON
-                temp_json = JSON_PATH + ".tmp"
-                with open(temp_json, "w", encoding="utf-8") as f:
-                    json.dump(data, f, ensure_ascii=False, indent=2)
-                os.replace(temp_json, JSON_PATH)
-
-                # Also save JS for file:// fallback
-                temp_js = JS_PATH + ".tmp"
-                with open(temp_js, "w", encoding="utf-8") as f:
-                    f.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(data, ensure_ascii=False, indent=2) + ";\n")
-                os.replace(temp_js, JS_PATH)
+                data = crypto_vault.decrypt_json_data(body, default=[])
+                if not isinstance(data, list):
+                    raise ValueError("Assignments payload must be a list")
+                crypto_vault.save_assignments_files(data, JSON_PATH, JS_PATH)
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -155,8 +148,7 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                 assign_path = os.path.join(BASE_DIR, "assignments.json")
                 if os.path.exists(assign_path):
                     try:
-                        with open(assign_path, "r", encoding="utf-8") as af:
-                            curr_items = json.load(af)
+                        curr_items = crypto_vault.load_assignments_file(assign_path)
                         target = next((x for x in curr_items if str(x.get("id")) == str(task_id) or x.get("title") == title), None)
                         if target:
                             moodle_uid = target.get("moodleUid")
@@ -218,8 +210,7 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                 assign_path = os.path.join(BASE_DIR, "assignments.json")
                 if os.path.exists(assign_path):
                     try:
-                        with open(assign_path, "r", encoding="utf-8") as af:
-                            curr_items = json.load(af)
+                        curr_items = crypto_vault.load_assignments_file(assign_path)
                         target = next((x for x in curr_items if str(x.get("id")) == str(task_id)), None)
                         if target:
                             moodle_uid = target.get("moodleUid")
@@ -240,11 +231,8 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                                     json.dump(ign_list, f, ensure_ascii=False, indent=2)
 
                         new_items = [x for x in curr_items if str(x.get("id")) != str(task_id)]
-                        with open(assign_path, "w", encoding="utf-8") as af:
-                            json.dump(new_items, af, ensure_ascii=False, indent=2)
                         js_path = os.path.join(BASE_DIR, "assignments.js")
-                        with open(js_path, "w", encoding="utf-8") as jf:
-                            jf.write("window.INITIAL_ASSIGNMENTS = " + json.dumps(new_items, ensure_ascii=False, indent=2) + ";\n")
+                        crypto_vault.save_assignments_files(new_items, assign_path, js_path)
                     except Exception:
                         pass
 
@@ -252,6 +240,40 @@ class AssignmentHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "success"}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
+            return
+
+        if self.path in ("/api/update-vault", "/api/update-vault/"):
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+            except (ValueError, TypeError):
+                content_length = 0
+            body = self.rfile.read(content_length).decode("utf-8")
+            try:
+                payload = json.loads(body)
+                current_vault = crypto_vault.load_vault()
+                if not current_vault or payload.get("key_id") != current_vault.get("key_id") or not payload.get("user_wrapped_key"):
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"status": "error", "message": "Invalid vault key_id or payload"}).encode("utf-8"))
+                    return
+                if payload.get("user_salt"):
+                    current_vault["user_salt"] = payload["user_salt"]
+                if payload.get("user_iterations"):
+                    current_vault["user_iterations"] = payload["user_iterations"]
+                current_vault["user_wrapped_key"] = payload["user_wrapped_key"]
+                crypto_vault.save_vault(current_vault)
+                items = crypto_vault.load_assignments_file(JSON_PATH)
+                crypto_vault.save_assignments_files(items, JSON_PATH, JS_PATH)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok"}).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
