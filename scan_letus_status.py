@@ -238,57 +238,61 @@ def sync_to_cloud(task_id, status=None, title="", letus_url=None, letus_submitte
 
 
 def sync_to_git(summary_msg):
-    """origin/main の最新データと統合した上で競合なく git commit & push"""
+    """origin/main の最新データと統合した上で競合なく git commit & push (リトライ付)"""
     try:
         current_local = load_assignments()
-        remote_items, remote_ignored = _fetch_origin_assignments_and_ignored()
+        for attempt in range(3):
+            if attempt > 0:
+                time.sleep(5)
+            remote_items, remote_ignored = _fetch_origin_assignments_and_ignored()
 
-        if remote_items:
-            merged = _merge_assignments(current_local, remote_items)
-            # Local scan results for letusUrl and letusSubmitted win on matching items
-            local_by_id = {str(a.get("id")): a for a in current_local if a.get("id")}
-            for item in merged:
-                loc = local_by_id.get(str(item.get("id")))
-                if loc:
-                    if loc.get("letusUrl"):
-                        item["letusUrl"] = loc["letusUrl"]
-                    if "letusSubmitted" in loc:
-                        item["letusSubmitted"] = loc["letusSubmitted"]
-            if remote_ignored:
-                merged = [
-                    a for a in merged
-                    if a.get("title") not in remote_ignored and a.get("moodleUid") not in remote_ignored
-                ]
-        else:
-            merged = current_local
+            if remote_items:
+                merged = _merge_assignments(current_local, remote_items)
+                # Local scan results for letusUrl and letusSubmitted win on matching items
+                local_by_id = {str(a.get("id")): a for a in current_local if a.get("id")}
+                for item in merged:
+                    loc = local_by_id.get(str(item.get("id")))
+                    if loc:
+                        if loc.get("letusUrl"):
+                            item["letusUrl"] = loc["letusUrl"]
+                        if "letusSubmitted" in loc:
+                            item["letusSubmitted"] = loc["letusSubmitted"]
+                if remote_ignored:
+                    merged = [
+                        a for a in merged
+                        if a.get("title") not in remote_ignored and a.get("moodleUid") not in remote_ignored
+                    ]
+            else:
+                merged = current_local
 
-        aligned = _align_head_if_data_only()
-        if not aligned and remote_items:
-            # Check if branch head has non-data unpushed commits vs origin/main
-            ahead = subprocess.check_output(
-                ["git", "diff", "--name-only", "origin/main..HEAD"], cwd=BASE_DIR, text=True, stderr=subprocess.DEVNULL
-            ).strip()
-            if not ahead:
-                # Branch head is behind origin/main (fast-forwardable)
-                subprocess.run(["git", "merge", "--ff-only", "origin/main"], cwd=BASE_DIR, capture_output=True, timeout=10)
+            aligned = _align_head_if_data_only()
+            if not aligned and remote_items:
+                ahead = subprocess.check_output(
+                    ["git", "diff", "--name-only", "origin/main..HEAD"], cwd=BASE_DIR, text=True, stderr=subprocess.DEVNULL
+                ).strip()
+                if not ahead:
+                    subprocess.run(["git", "reset", "--mixed", "origin/main"], cwd=BASE_DIR, capture_output=True, timeout=10)
 
-        save_assignments(merged)
-        subprocess.run(["git", "add", "assignments.json", "assignments.js"], cwd=BASE_DIR, capture_output=True, timeout=10)
-        commit_msg = f"auto: {summary_msg} [skip render]"
-        commit_res = subprocess.run(
-            ["git", "commit", "-m", commit_msg],
-            cwd=BASE_DIR,
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        if "nothing to commit" not in commit_res.stdout.lower() and commit_res.returncode == 0:
+            save_assignments(merged)
+            subprocess.run(["git", "add", "assignments.json", "assignments.js"], cwd=BASE_DIR, capture_output=True, timeout=10)
+            commit_msg = f"auto: {summary_msg} [skip render]"
+            commit_res = subprocess.run(
+                ["git", "commit", "-m", commit_msg],
+                cwd=BASE_DIR,
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if "nothing to commit" in commit_res.stdout.lower() or commit_res.returncode != 0:
+                print("  [Git] 差分なしまたはコミット不要（同期完了）")
+                break
+
             print(f"  [Git] コミット作成: {commit_msg}")
             push_res = subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, capture_output=True, text=True, timeout=25)
             if push_res.returncode == 0:
                 print("  [Git] GitHubへのプッシュ完了")
-            else:
-                print(f"  [Git Push Warning] {push_res.stderr.strip()}")
+                break
+            print(f"  [Git Push Retry {attempt+1}/3] {push_res.stderr.strip()}")
     except Exception as e:
         print(f"  [Git Sync Info] Gitプッシュスキップ ({e})")
 
